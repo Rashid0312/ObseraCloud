@@ -1,0 +1,18 @@
+{
+	"ulid": "01KCMX4XC868EDQEK9WHYWK88F",
+	"minTime": 1765922410081,
+	"maxTime": 1765929600000,
+	"stats": {
+		"numSamples": 20119,
+		"numFloatSamples": 20119,
+		"numSeries": 43,
+		"numChunks": 131
+	},
+	"compaction": {
+		"level": 1,
+		"sources": [
+			"01KCMX4XC868EDQEK9WHYWK88F"
+		]
+	},
+	"version": 1
+}

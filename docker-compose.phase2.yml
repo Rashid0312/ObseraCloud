@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: skyview-postgres
+    environment:
+      POSTGRES_DB: skyview
+      POSTGRES_USER: skyview_user
+      POSTGRES_PASSWORD: skyview_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ~/SkyView/backend/database.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - skyview-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U skyview_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ~/SkyView/backend
+      dockerfile: Dockerfile
+    container_name: skyview-backend
+    ports:
+      - "5001:5000"
+    environment:
+      - FLASK_ENV=production
+      - DATABASE_URL=postgresql://skyview_user:skyview_password@postgres:5432/skyview
+      - JWT_SECRET_KEY=skyview-production-secret-key
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - skyview-net
+
+  frontend:
+    build:
+      context: ~/SkyView/frontend
+      dockerfile: Dockerfile
+    container_name: skyview-frontend
+    ports:
+      - "3001:80"
+    depends_on:
+      - backend
+    networks:
+      - skyview-net
+
+networks:
+  skyview-net:
+    driver: bridge
+
+volumes:
+  postgres-data:
