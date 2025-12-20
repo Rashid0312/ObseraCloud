@@ -1,256 +1,225 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import './Dashboard.css';
+"use client"
 
-interface Metric {
-  metric: string;
-  value: number;
-  tenant_id: string;
-}
+import type React from "react"
 
-interface Log {
-  timestamp: string;
-  level: string;
-  message: string;
-  tenant_id: string;
-}
+import { useState, useEffect } from "react"
+import LogsPanel from "./LogsPanel"
+import MetricsChart from "./MetricsChart"
+import TracesPanel from "./TracesPanel"
+import "./Dashboard.css"
 
-interface Trace {
-  trace_id: string;
-  duration_ms: number;
-  service: string;
-  tenant_id: string;
-}
-
-function Dashboard() {
-  const [metrics, setMetrics] = useState<Metric[]>([]);
-  const [logs, setLogs] = useState<Log[]>([]);
-  const [traces, setTraces] = useState<Trace[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'logs' | 'traces'>('overview');
-  const navigate = useNavigate();
-
-  const tenantId = localStorage.getItem('tenantId');
-  const apiKey = localStorage.getItem('apiKey');
+const Dashboard = () => {
+  const [tenantId, setTenantId] = useState<string>("")
+  const [tenantName, setTenantName] = useState<string>("")
+  const [activeView, setActiveView] = useState<"logs" | "metrics" | "traces">("logs")
+  const [expandedGroups, setExpandedGroups] = useState<string[]>(["telemetry"])
+  const [refreshKey, setRefreshKey] = useState<number>(0)
 
   useEffect(() => {
-    fetchData();
-    const interval = setInterval(fetchData, 30000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const fetchData = async () => {
-    try {
-      const headers = { 'X-API-Key': apiKey || '' };
-      
-      const [metricsRes, logsRes, tracesRes] = await Promise.all([
-        axios.get<Metric[]>(`http://localhost:5001/api/metrics?tenant_id=${tenantId}`, { headers }),
-        axios.get<Log[]>(`http://localhost:5001/api/logs?tenant_id=${tenantId}`, { headers }),
-        axios.get<Trace[]>(`http://localhost:5001/api/traces?tenant_id=${tenantId}`, { headers })
-      ]);
-
-      setMetrics(metricsRes.data);
-      setLogs(logsRes.data);
-      setTraces(tracesRes.data);
-      setLoading(false);
-    } catch (err) {
-      console.error('Error fetching data:', err);
-      if (axios.isAxiosError(err) && err.response?.status === 401) {
-        handleLogout();
-      }
-    }
-  };
+    const storedTenantId = localStorage.getItem("tenant_id")
+    const storedTenantName = localStorage.getItem("tenant_name")
+    if (storedTenantId) setTenantId(storedTenantId)
+    if (storedTenantName) setTenantName(storedTenantName)
+  }, [])
 
   const handleLogout = () => {
-    localStorage.removeItem('tenantId');
-    localStorage.removeItem('apiKey');
-    navigate('/login');
-  };
-
-  if (loading) {
-    return (
-      <div className="loading-container">
-        <div className="spinner"></div>
-        <p>Loading...</p>
-      </div>
-    );
+    localStorage.removeItem("tenant_id")
+    localStorage.removeItem("tenant_name")
+    window.location.reload()
   }
 
+  const handleRefresh = () => {
+    setRefreshKey((prev) => prev + 1)
+  }
+
+  const toggleGroup = (group: string) => {
+    setExpandedGroups((prev) => (prev.includes(group) ? prev.filter((g) => g !== group) : [...prev, group]))
+  }
+
+  const telemetryItems = [
+    { id: "logs", label: "Logs" },
+    { id: "metrics", label: "Metrics" },
+    { id: "traces", label: "Traces" },
+  ]
+
   return (
-    <div className="dashboard-container">
+    <div className="obs-dashboard">
       {/* Sidebar */}
-      <aside className="sidebar">
-        <div className="sidebar-header">
-          <h1>SkyView</h1>
-          <span className="tenant-label">{tenantId}</span>
+      <aside className="obs-sidebar">
+        <div className="obs-sidebar-header">
+          <div className="obs-sidebar-logo">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+            </svg>
+          </div>
+          <span className="obs-sidebar-title">SkyView</span>
         </div>
-        
-        <nav className="sidebar-nav">
-          <button 
-            className={activeTab === 'overview' ? 'nav-item active' : 'nav-item'}
-            onClick={() => setActiveTab('overview')}
-          >
-            <span className="nav-icon">📊</span>
-            Overview
-          </button>
-          <button 
-            className={activeTab === 'logs' ? 'nav-item active' : 'nav-item'}
-            onClick={() => setActiveTab('logs')}
-          >
-            <span className="nav-icon">📝</span>
-            Logs
-          </button>
-          <button 
-            className={activeTab === 'traces' ? 'nav-item active' : 'nav-item'}
-            onClick={() => setActiveTab('traces')}
-          >
-            <span className="nav-icon">🔍</span>
-            Traces
-          </button>
+
+        <nav className="obs-sidebar-nav">
+          <div className="obs-nav-group">
+            <div className="obs-nav-group-header active" onClick={() => toggleGroup("telemetry")}>
+              <div className="obs-nav-group-left">
+                <NavIcon name="activity" />
+                <span>Telemetry</span>
+              </div>
+              <svg
+                className={`obs-nav-group-arrow ${expandedGroups.includes("telemetry") ? "expanded" : ""}`}
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path d="M9 18l6-6-6-6" />
+              </svg>
+            </div>
+            {expandedGroups.includes("telemetry") && (
+              <div className="obs-nav-subitems">
+                {telemetryItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className={`obs-nav-subitem ${activeView === item.id ? "active" : ""}`}
+                    onClick={() => setActiveView(item.id as "logs" | "metrics" | "traces")}
+                  >
+                    {item.label}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="obs-nav-section">
+            <button className="obs-nav-item">
+              <NavIcon name="layout" />
+              <span>Dashboards</span>
+            </button>
+          </div>
+
+          <div className="obs-nav-section">
+            <button className="obs-nav-item">
+              <NavIcon name="bell" />
+              <span>Alerts</span>
+            </button>
+          </div>
         </nav>
 
-        <button onClick={handleLogout} className="logout-button">
-          Logout
-        </button>
+        <div className="obs-sidebar-footer">
+          <div
+            className="obs-tenant-badge"
+            onClick={handleLogout}
+            style={{ cursor: "pointer" }}
+            title="Click to logout"
+          >
+            <span className="obs-tenant-dot"></span>
+            <span>{tenantName || "Tenant"}</span>
+          </div>
+        </div>
       </aside>
 
       {/* Main Content */}
-      <main className="main-content">
-        <header className="content-header">
-          <h2>
-            {activeTab === 'overview' && 'Overview'}
-            {activeTab === 'logs' && 'Logs'}
-            {activeTab === 'traces' && 'Traces'}
-          </h2>
-          <div className="header-actions">
-            <span className="last-update">Last updated: {new Date().toLocaleTimeString()}</span>
+      <main className="obs-main">
+        {/* Header */}
+        <header className="obs-header">
+          <div className="obs-header-left">
+            <h1 className="obs-page-title">
+              {activeView === "logs" && "Logs"}
+              {activeView === "metrics" && "Metrics"}
+              {activeView === "traces" && "Traces"}
+            </h1>
+            <span className="obs-tenant-label">{tenantName || tenantId}</span>
+          </div>
+
+          <div className="obs-header-right">
+            <button className="obs-refresh-btn" onClick={handleRefresh} title="Refresh data">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M23 4v6h-6M1 20v-6h6" />
+                <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
+              </svg>
+              Refresh
+            </button>
+            <button className="obs-logout-btn" onClick={handleLogout}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" y1="12" x2="9" y2="12" />
+              </svg>
+              Logout
+            </button>
           </div>
         </header>
 
-        {/* Overview Tab */}
-        {activeTab === 'overview' && (
-          <div className="content-section">
-            {/* Metrics Cards */}
-            <div className="metrics-overview">
-              {metrics.map((metric, idx) => (
-                <div key={idx} className="metric-card">
-                  <div className="metric-header">
-                    <span className="metric-name">{metric.metric.replace('_', ' ')}</span>
-                    <span className={`metric-status ${metric.value > 60 ? 'critical' : 'healthy'}`}>
-                      {metric.value > 60 ? '⚠️' : '✓'}
-                    </span>
-                  </div>
-                  <div className="metric-value-large">{metric.value}%</div>
-                  <div className="metric-progress">
-                    <div 
-                      className="metric-progress-bar"
-                      style={{ 
-                        width: `${metric.value}%`,
-                        backgroundColor: metric.value > 60 ? '#ef4444' : '#10b981'
-                      }}
-                    ></div>
-                  </div>
-                </div>
-              ))}
-            </div>
+        {/* View Tabs */}
+        <div className="obs-view-tabs">
+          <button
+            className={`obs-view-tab ${activeView === "logs" ? "active" : ""}`}
+            onClick={() => setActiveView("logs")}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="8" y1="6" x2="21" y2="6" />
+              <line x1="8" y1="12" x2="21" y2="12" />
+              <line x1="8" y1="18" x2="21" y2="18" />
+              <line x1="3" y1="6" x2="3.01" y2="6" />
+              <line x1="3" y1="12" x2="3.01" y2="12" />
+              <line x1="3" y1="18" x2="3.01" y2="18" />
+            </svg>
+            Logs
+          </button>
+          <button
+            className={`obs-view-tab ${activeView === "metrics" ? "active" : ""}`}
+            onClick={() => setActiveView("metrics")}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+            </svg>
+            Metrics
+          </button>
+          <button
+            className={`obs-view-tab ${activeView === "traces" ? "active" : ""}`}
+            onClick={() => setActiveView("traces")}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polygon points="12 2 2 7 12 12 22 7 12 2" />
+              <polyline points="2 17 12 22 22 17" />
+              <polyline points="2 12 12 17 22 12" />
+            </svg>
+            Traces
+          </button>
+        </div>
 
-            {/* Recent Activity */}
-            <div className="section-header">
-              <h3>Recent Activity</h3>
-            </div>
-            <div className="activity-table">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Time</th>
-                    <th>Type</th>
-                    <th>Message</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {logs.slice(0, 5).map((log, idx) => (
-                    <tr key={idx}>
-                      <td className="time-cell">{new Date(log.timestamp).toLocaleTimeString()}</td>
-                      <td><span className={`type-badge ${log.level.toLowerCase()}`}>{log.level}</span></td>
-                      <td>{log.message}</td>
-                      <td><span className={`status-dot ${log.level.toLowerCase()}`}></span></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {/* Logs Tab */}
-        {activeTab === 'logs' && (
-          <div className="content-section">
-            <div className="table-container">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Timestamp</th>
-                    <th>Level</th>
-                    <th>Message</th>
-                    <th>Tenant</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {logs.map((log, idx) => (
-                    <tr key={idx}>
-                      <td className="time-cell">{new Date(log.timestamp).toLocaleString()}</td>
-                      <td><span className={`type-badge ${log.level.toLowerCase()}`}>{log.level}</span></td>
-                      <td className="message-cell">{log.message}</td>
-                      <td className="tenant-cell">{log.tenant_id}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {/* Traces Tab */}
-        {activeTab === 'traces' && (
-          <div className="content-section">
-            <div className="table-container">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Trace ID</th>
-                    <th>Service</th>
-                    <th>Duration</th>
-                    <th>Tenant</th>
-                    <th>Performance</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {traces.map((trace, idx) => (
-                    <tr key={idx}>
-                      <td className="trace-id-cell"><code>{trace.trace_id}</code></td>
-                      <td>{trace.service}</td>
-                      <td className="duration-cell">{trace.duration_ms}ms</td>
-                      <td className="tenant-cell">{trace.tenant_id}</td>
-                      <td>
-                        <div className="performance-bar">
-                          <div 
-                            className="performance-fill"
-                            style={{ width: `${Math.min((trace.duration_ms / 600) * 100, 100)}%` }}
-                          ></div>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
+        {/* Content */}
+        <div className="obs-content">
+          {activeView === "logs" && <LogsPanel tenantId={tenantId} refreshKey={refreshKey} />}
+          {activeView === "metrics" && <MetricsChart tenantId={tenantId} refreshKey={refreshKey} />}
+          {activeView === "traces" && <TracesPanel tenantId={tenantId} refreshKey={refreshKey} />}
+        </div>
       </main>
     </div>
-  );
+  )
 }
 
-export default Dashboard;
+const NavIcon = ({ name }: { name: string }): React.ReactElement | null => {
+  const icons: Record<string, React.ReactElement> = {
+    activity: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+      </svg>
+    ),
+    layout: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <rect x="3" y="3" width="18" height="18" rx="2" />
+        <line x1="3" y1="9" x2="21" y2="9" />
+        <line x1="9" y1="21" x2="9" y2="9" />
+      </svg>
+    ),
+    bell: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" />
+        <path d="M13.73 21a2 2 0 01-3.46 0" />
+      </svg>
+    ),
+  }
+  return icons[name] || null
+}
+
+export default Dashboard

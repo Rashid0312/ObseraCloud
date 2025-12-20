@@ -1,21 +1,30 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
+import './App.css';
 
 function App() {
-  const isAuthenticated = localStorage.getItem('tenantId') !== null;
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+
+  useEffect(() => {
+    const tenantId = localStorage.getItem('tenant_id');
+    if (tenantId) {
+      setIsAuthenticated(true);
+    }
+  }, []);
+
+  const handleLoginSuccess = () => {
+    setIsAuthenticated(true);
+  };
 
   return (
-    <Router>
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route 
-          path="/dashboard" 
-          element={isAuthenticated ? <Dashboard /> : <Navigate to="/login" />} 
-        />
-        <Route path="/" element={<Navigate to="/login" />} />
-      </Routes>
-    </Router>
+    <div className="App">
+      {!isAuthenticated ? (
+        <Login onLoginSuccess={handleLoginSuccess} />
+      ) : (
+        <Dashboard />
+      )}
+    </div>
   );
 }
 

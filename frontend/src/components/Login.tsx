@@ -1,78 +1,110 @@
-import { useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import './Login.css';
+"use client"
 
-interface LoginResponse {
-  tenant_id: string;
+import type React from "react"
+import { useState, type FormEvent, type ChangeEvent } from "react"
+import "./Login.css"
+
+interface LoginProps {
+  onLoginSuccess: (tenantId: string) => void
 }
 
-function Login() {
-  const [apiKey, setApiKey] = useState<string>('');
-  const [error, setError] = useState<string>('');
-  const [loading, setLoading] = useState<boolean>(false);
-  const navigate = useNavigate();
+const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
+  const [tenantId, setTenantId] = useState<string>("")
+  const [password, setPassword] = useState<string>("")
+  const [error, setError] = useState<string>("")
+  const [loading, setLoading] = useState<boolean>(false)
 
   const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
+    e.preventDefault()
+    setError("")
+    setLoading(true)
 
     try {
-      const response = await axios.post<LoginResponse>('http://localhost:5001/api/auth/login', {
-        api_key: apiKey
-      });
+      const response = await fetch("http://localhost:5001/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tenant_id: tenantId, password }),
+      })
 
-      localStorage.setItem('tenantId', response.data.tenant_id);
-      localStorage.setItem('apiKey', apiKey);
-      navigate('/dashboard');
-    } catch (err) {
-      if (axios.isAxiosError(err)) {
-        setError(err.response?.data?.error || 'Login failed');
-      } else {
-        setError('Login failed');
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || "Login failed")
       }
+
+      const data = await response.json()
+      localStorage.setItem("tenant_id", data.tenant_id)
+      localStorage.setItem("tenant_name", data.name)
+      onLoginSuccess(data.tenant_id)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Login failed. Please try again.")
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   return (
-    <div className="login-container">
-      <div className="login-card">
-        <div className="login-header">
-          <h1>🚀 SkyView</h1>
-          <p>Multi-Tenant Observability Platform</p>
+    <div className="obs-login-container">
+      <div className="obs-login-glow" />
+      <div className="obs-login-box">
+        <div className="obs-login-logo">
+          <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+            <rect width="40" height="40" rx="8" fill="url(#gradient)" />
+            <path d="M12 20L18 26L28 14" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+            <defs>
+              <linearGradient id="gradient" x1="0" y1="0" x2="40" y2="40">
+                <stop stopColor="#8B5CF6" />
+                <stop offset="1" stopColor="#6366F1" />
+              </linearGradient>
+            </defs>
+          </svg>
         </div>
-        
-        <form onSubmit={handleLogin} className="login-form">
-          <div className="form-group">
-            <label>API Key</label>
+        <h1 className="obs-login-title">Observability Platform</h1>
+        <p className="obs-login-subtitle">Sign in to your dashboard</p>
+
+        <form onSubmit={handleLogin} className="obs-login-form">
+          <div className="obs-form-group">
+            <label htmlFor="tenantId">Tenant ID</label>
             <input
-              type="password"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              placeholder="Enter your API key"
+              type="text"
+              id="tenantId"
+              value={tenantId}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setTenantId(e.target.value)}
+              placeholder="acme-corp"
               required
               disabled={loading}
             />
           </div>
-          
-          {error && <div className="error-message">{error}</div>}
-          
-          <button type="submit" disabled={loading} className="login-btn">
-            {loading ? 'Authenticating...' : 'Login'}
+
+          <div className="obs-form-group">
+            <label htmlFor="password">Password</label>
+            <input
+              type="password"
+              id="password"
+              value={password}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              required
+              disabled={loading}
+            />
+          </div>
+
+          {error && <div className="obs-error-message">{error}</div>}
+
+          <button type="submit" className="obs-login-button" disabled={loading}>
+            {loading ? <span className="obs-loading-spinner" /> : "Sign in"}
           </button>
         </form>
 
-        <div className="demo-keys">
-          <p className="demo-title">Demo Keys:</p>
-          <code>tenant1-secret-key-12345</code>
-          <code>tenant2-secret-key-67890</code>
+        <div className="obs-demo-credentials">
+          <p className="obs-demo-title">Demo credentials</p>
+          <div className="obs-demo-items">
+            <code>acme-corp / acme123</code>
+            <code>beta-inc / beta456</code>
+          </div>
         </div>
       </div>
     </div>
-  );
+  )
 }
 
-export default Login;
+export default Login

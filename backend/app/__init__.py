@@ -1,35 +1,25 @@
-from flask import Flask
-from flask_jwt_extended import JWTManager
+from flask import Flask, jsonify
 from flask_cors import CORS
-from config import config
 
-jwt = JWTManager()
-
-def create_app(config_name='production'):
+def create_app():
     app = Flask(__name__)
-    app.config.from_object(config[config_name])
     
-    # Initialize extensions
-    jwt.init_app(app)
-    
-    # Fix CORS - allow frontend to make requests
-    CORS(app, resources={r"/api/*": {"origins": "*", "methods": ["GET", "POST", "OPTIONS"], "allow_headers": ["Content-Type", "X-API-Key"]}})
-    
-    # Import blueprints
-    from app.routes.auth import bp as auth_bp
-    from app.routes.logs import bp as logs_bp
-    from app.routes.metrics import bp as metrics_bp
-    from app.routes.traces import bp as traces_bp
+    # CORS configuration - allow frontend to call backend
+    CORS(app, origins=["http://localhost:5173"], supports_credentials=True)
     
     # Register blueprints
-    app.register_blueprint(auth_bp)
-    app.register_blueprint(logs_bp)
-    app.register_blueprint(metrics_bp)
-    app.register_blueprint(traces_bp)
+    from app.routes.query import query_bp
+    app.register_blueprint(query_bp, url_prefix='/api')
+    
+    from app.routes.metrics import bp as metrics_bp
+    app.register_blueprint(metrics_bp)  # already has /api/metrics prefix
+    
+    from app.routes.traces import bp as traces_bp
+    app.register_blueprint(traces_bp)  # already has /api/traces prefix
     
     # Health check endpoint
     @app.route('/health')
     def health():
-        return {'status': 'ok'}, 200
+        return jsonify({'status': 'ok'}), 200
     
     return app

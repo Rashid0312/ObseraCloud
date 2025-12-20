@@ -43,3 +43,9 @@ observability/prometheus-data/
 observability/loki-data/
 observability/tempo-data/
 observability/grafana-data/
+
+# Observability data (correct path)
+observability-mvp/prometheus-data/
+observability-mvp/loki-data/
+observability-mvp/tempo-data/
+observability-mvp/grafana-data/

@@ -1,0 +1,242 @@
+/* Better Stack-inspired metrics cards */
+.obs-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.obs-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+/* Cleaner card design with subtle borders */
+.obs-metric-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  background: #0b1020;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  transition: all 0.2s ease;
+}
+
+.obs-metric-card:hover {
+  border-color: rgba(255, 45, 85, 0.3);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.obs-metric-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Pink/rose accent for primary metrics */
+.obs-icon-total {
+  background: rgba(255, 45, 85, 0.12);
+  color: #ff2d55;
+}
+
+.obs-icon-success {
+  background: rgba(34, 197, 94, 0.12);
+  color: #4ade80;
+}
+
+.obs-icon-error {
+  background: rgba(239, 68, 68, 0.12);
+  color: #fca5a5;
+}
+
+.obs-icon-endpoints {
+  background: rgba(59, 130, 246, 0.12);
+  color: #93c5fd;
+}
+
+.obs-metric-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.obs-metric-label {
+  color: #9ca3af;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.obs-metric-value {
+  color: #f9fafb;
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.obs-value-success {
+  color: #4ade80;
+}
+
+.obs-value-error {
+  color: #fca5a5;
+}
+
+/* Table with Better Stack styling */
+.obs-metrics-table-wrapper {
+  overflow-x: auto;
+  background: #0b1020;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+}
+
+.obs-metrics-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.obs-metrics-table th {
+  padding: 14px 20px;
+  text-align: left;
+  color: #9ca3af;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: #0b1020;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.obs-metrics-table td {
+  padding: 14px 20px;
+  color: #d1d5db;
+  font-size: 0.9rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.obs-metrics-table tbody tr:hover {
+  background: rgba(255, 45, 85, 0.03);
+}
+
+.obs-endpoint-cell code {
+  padding: 5px 12px;
+  background: rgba(255, 45, 85, 0.08);
+  border-radius: 6px;
+  color: #ff2d55;
+  font-family: "SF Mono", "Monaco", "Cascadia Code", monospace;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.obs-success-cell {
+  color: #4ade80 !important;
+  font-weight: 600;
+}
+
+.obs-error-cell {
+  color: #fca5a5 !important;
+  font-weight: 600;
+}
+
+.obs-rate-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.obs-rate-bar {
+  flex: 1;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  overflow: hidden;
+  max-width: 120px;
+}
+
+.obs-rate-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.obs-rate-fill.obs-rate-excellent {
+  background: linear-gradient(90deg, #ff2d55, #ff375f);
+}
+
+.obs-rate-fill.obs-rate-good {
+  background: linear-gradient(90deg, #fbbf24, #fcd34d);
+}
+
+.obs-rate-fill.obs-rate-warning {
+  background: linear-gradient(90deg, #ef4444, #fca5a5);
+}
+
+.obs-rate-value {
+  font-size: 0.875rem;
+  font-weight: 700;
+  min-width: 55px;
+}
+
+.obs-rate-value.obs-rate-excellent {
+  color: #4ade80;
+}
+
+.obs-rate-value.obs-rate-good {
+  color: #fcd34d;
+}
+
+.obs-rate-value.obs-rate-warning {
+  color: #fca5a5;
+}
+
+.obs-metrics-loading,
+.obs-metrics-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 80px;
+  color: #9ca3af;
+  font-size: 0.9rem;
+}
+
+.obs-metrics-error {
+  color: #fca5a5;
+}
+
+.obs-loading-spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-top-color: #ff2d55;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 1200px) {
+  .obs-metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .obs-metrics-grid {
+    grid-template-columns: 1fr;
+  }
+}
