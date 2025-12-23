@@ -1,225 +1,373 @@
-"use client"
+import { useState, useEffect } from 'react';
+import LogsPanel from './LogsPanel';
+import MetricsChart from './MetricsChart';
+import TracesPanel from './TracesPanel';
+import IntegrationPanel from './IntegrationPanel';
+import AdminPanel from './AdminPanel';
+import SettingsPanel from './SettingsPanel';
+import { useTheme } from '../contexts/ThemeContext';
+import { API_BASE_URL } from '../config';
+import {
+  Activity,
+  LayoutGrid,
+  Bell,
+  Sun,
+  Moon,
+  RefreshCw,
+  LogOut,
+  List,
+  BarChart3,
+  GitBranch,
+  ChevronRight,
+  AlertCircle,
+  TrendingUp,
+  Zap,
+  Key,
+  Shield,
+  Settings
+} from 'lucide-react';
+import './Dashboard.css';
 
-import type React from "react"
+interface Stats {
+  totalLogs: number;
+  errorCount: number;
+  errorRate: number;
+  avgResponseTime: number;
+  activeTraces: number;
+}
 
-import { useState, useEffect } from "react"
-import LogsPanel from "./LogsPanel"
-import MetricsChart from "./MetricsChart"
-import TracesPanel from "./TracesPanel"
-import "./Dashboard.css"
+interface DashboardProps {
+  onLogout?: () => void;
+  onGoHome?: () => void;
+}
 
-const Dashboard = () => {
-  const [tenantId, setTenantId] = useState<string>("")
-  const [tenantName, setTenantName] = useState<string>("")
-  const [activeView, setActiveView] = useState<"logs" | "metrics" | "traces">("logs")
-  const [expandedGroups, setExpandedGroups] = useState<string[]>(["telemetry"])
-  const [refreshKey, setRefreshKey] = useState<number>(0)
+const Dashboard: React.FC<DashboardProps> = ({ onLogout, onGoHome }) => {
+  const [tenantId, setTenantId] = useState<string>('');
+  const [tenantName, setTenantName] = useState<string>('');
+  const [apiKey, setApiKey] = useState<string>('');
+  const [token, setToken] = useState<string>('');
+  const [activeView, setActiveView] = useState<'overview' | 'logs' | 'metrics' | 'traces' | 'integration' | 'settings' | 'admin'>('overview');
+  const [expandedGroups, setExpandedGroups] = useState<string[]>(['telemetry']);
+  const [refreshKey, setRefreshKey] = useState<number>(0);
+  const [stats, setStats] = useState<Stats>({ totalLogs: 0, errorCount: 0, errorRate: 0, avgResponseTime: 0, activeTraces: 0 });
+  const { theme, toggleTheme } = useTheme();
+
+  const isAdmin = tenantId === 'admin';
 
   useEffect(() => {
-    const storedTenantId = localStorage.getItem("tenant_id")
-    const storedTenantName = localStorage.getItem("tenant_name")
-    if (storedTenantId) setTenantId(storedTenantId)
-    if (storedTenantName) setTenantName(storedTenantName)
-  }, [])
+    const storedTenantId = localStorage.getItem('tenant_id');
+    const storedTenantName = localStorage.getItem('tenant_name');
+    const storedApiKey = localStorage.getItem('api_key');
+    const storedToken = localStorage.getItem('token');
+    if (storedTenantId) setTenantId(storedTenantId);
+    if (storedTenantName) setTenantName(storedTenantName);
+    if (storedApiKey) setApiKey(storedApiKey);
+    if (storedToken) setToken(storedToken);
+  }, []);
+
+  useEffect(() => {
+    if (!tenantId) return;
+
+    const fetchStats = async () => {
+      try {
+        const [logsRes, metricsRes, tracesRes] = await Promise.all([
+          fetch(`${API_BASE_URL}/api/logs?tenant_id=${tenantId}&limit=100`),
+          fetch(`${API_BASE_URL}/api/metrics?tenant_id=${tenantId}`),
+          fetch(`${API_BASE_URL}/api/traces?tenant_id=${tenantId}`)
+        ]);
+
+        const logsData = await logsRes.json();
+        const metricsData = await metricsRes.json();
+        const tracesData = await tracesRes.json();
+
+        const logs = logsData.logs || [];
+        const errorLogs = logs.filter((l: any) => l.level?.toLowerCase() === 'error');
+        const metrics = metricsData.metrics || [];
+        const responseTimes = metrics.filter((m: any) => m.metric_name === 'http_response_time_seconds');
+
+        const avgTime = responseTimes.length > 0
+          ? responseTimes.reduce((acc: number, m: any) => acc + parseFloat(m.value?.split('=')[1] || m.value || 0), 0) / responseTimes.length
+          : 0;
+
+        setStats({
+          totalLogs: logs.length,
+          errorCount: errorLogs.length,
+          errorRate: logs.length > 0 ? (errorLogs.length / logs.length * 100) : 0,
+          avgResponseTime: avgTime * 1000,
+          activeTraces: tracesData.count || 0
+        });
+      } catch (err) {
+        console.error('Failed to fetch stats:', err);
+      }
+    };
+
+    fetchStats();
+    const interval = setInterval(fetchStats, 15000);
+    return () => clearInterval(interval);
+  }, [tenantId, refreshKey]);
 
   const handleLogout = () => {
-    localStorage.removeItem("tenant_id")
-    localStorage.removeItem("tenant_name")
-    window.location.reload()
-  }
+    localStorage.removeItem('tenant_id');
+    localStorage.removeItem('tenant_name');
+    if (onLogout) {
+      onLogout();
+    } else {
+      window.location.reload();
+    }
+  };
 
   const handleRefresh = () => {
-    setRefreshKey((prev) => prev + 1)
-  }
+    setRefreshKey(prev => prev + 1);
+  };
 
   const toggleGroup = (group: string) => {
-    setExpandedGroups((prev) => (prev.includes(group) ? prev.filter((g) => g !== group) : [...prev, group]))
-  }
+    setExpandedGroups(prev =>
+      prev.includes(group) ? prev.filter(g => g !== group) : [...prev, group]
+    );
+  };
 
   const telemetryItems = [
-    { id: "logs", label: "Logs" },
-    { id: "metrics", label: "Metrics" },
-    { id: "traces", label: "Traces" },
-  ]
+    { id: 'logs', label: 'Logs', icon: List },
+    { id: 'metrics', label: 'Metrics', icon: BarChart3 },
+    { id: 'traces', label: 'Traces', icon: GitBranch },
+  ];
 
   return (
-    <div className="obs-dashboard">
+    <div className="dashboard-container">
+      {/* Background Effects */}
+      <div className="dashboard-bg-gradient" />
+      <div className="dashboard-bg-orb dashboard-bg-orb-1" />
+      <div className="dashboard-bg-orb dashboard-bg-orb-2" />
+
       {/* Sidebar */}
-      <aside className="obs-sidebar">
-        <div className="obs-sidebar-header">
-          <div className="obs-sidebar-logo">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-            </svg>
-          </div>
-          <span className="obs-sidebar-title">SkyView</span>
+      <aside className="dashboard-sidebar">
+        {/* Logo */}
+        <div className="dashboard-sidebar-header" onClick={onGoHome} style={{ cursor: 'pointer' }}>
+          <Activity className="dashboard-logo-icon" />
+          <span className="dashboard-logo-text">SkyView</span>
         </div>
 
-        <nav className="obs-sidebar-nav">
-          <div className="obs-nav-group">
-            <div className="obs-nav-group-header active" onClick={() => toggleGroup("telemetry")}>
-              <div className="obs-nav-group-left">
-                <NavIcon name="activity" />
+        {/* Navigation */}
+        <nav className="dashboard-nav">
+          {/* Overview */}
+          <button
+            className={`dashboard-nav-item ${activeView === 'overview' ? 'active' : ''}`}
+            onClick={() => setActiveView('overview')}
+          >
+            <LayoutGrid className="dashboard-nav-icon" />
+            <span>Dashboard</span>
+          </button>
+
+          {/* Telemetry Group */}
+          <div className="dashboard-nav-group">
+            <button
+              className={`dashboard-nav-group-header ${expandedGroups.includes('telemetry') ? 'expanded' : ''}`}
+              onClick={() => toggleGroup('telemetry')}
+            >
+              <div className="dashboard-nav-group-left">
+                <Zap className="dashboard-nav-icon" />
                 <span>Telemetry</span>
               </div>
-              <svg
-                className={`obs-nav-group-arrow ${expandedGroups.includes("telemetry") ? "expanded" : ""}`}
-                width="12"
-                height="12"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <path d="M9 18l6-6-6-6" />
-              </svg>
-            </div>
-            {expandedGroups.includes("telemetry") && (
-              <div className="obs-nav-subitems">
-                {telemetryItems.map((item) => (
-                  <div
+              <ChevronRight className={`dashboard-chevron ${expandedGroups.includes('telemetry') ? 'rotated' : ''}`} />
+            </button>
+            {expandedGroups.includes('telemetry') && (
+              <div className="dashboard-nav-subitems">
+                {telemetryItems.map(item => (
+                  <button
                     key={item.id}
-                    className={`obs-nav-subitem ${activeView === item.id ? "active" : ""}`}
-                    onClick={() => setActiveView(item.id as "logs" | "metrics" | "traces")}
+                    className={`dashboard-nav-subitem ${activeView === item.id ? 'active' : ''}`}
+                    onClick={() => setActiveView(item.id as any)}
                   >
+                    <item.icon className="dashboard-subitem-icon" />
                     {item.label}
-                  </div>
+                  </button>
                 ))}
               </div>
             )}
           </div>
 
-          <div className="obs-nav-section">
-            <button className="obs-nav-item">
-              <NavIcon name="layout" />
-              <span>Dashboards</span>
-            </button>
-          </div>
+          {/* Settings */}
+          <button
+            className={`dashboard-nav-item ${activeView === 'settings' ? 'active' : ''}`}
+            onClick={() => setActiveView('settings')}
+          >
+            <Settings className="dashboard-nav-icon" />
+            <span>Settings</span>
+          </button>
 
-          <div className="obs-nav-section">
-            <button className="obs-nav-item">
-              <NavIcon name="bell" />
-              <span>Alerts</span>
+          {/* Integration */}
+          <button
+            className={`dashboard-nav-item ${activeView === 'integration' ? 'active' : ''}`}
+            onClick={() => setActiveView('integration')}
+          >
+            <Key className="dashboard-nav-icon" />
+            <span>Integration</span>
+          </button>
+
+          {/* Admin - Only visible to admin */}
+          {isAdmin && (
+            <button
+              className={`dashboard-nav-item admin ${activeView === 'admin' ? 'active' : ''}`}
+              onClick={() => setActiveView('admin')}
+            >
+              <Shield className="dashboard-nav-icon" />
+              <span>Admin</span>
             </button>
-          </div>
+          )}
         </nav>
 
-        <div className="obs-sidebar-footer">
-          <div
-            className="obs-tenant-badge"
-            onClick={handleLogout}
-            style={{ cursor: "pointer" }}
-            title="Click to logout"
-          >
-            <span className="obs-tenant-dot"></span>
-            <span>{tenantName || "Tenant"}</span>
+        {/* Footer */}
+        <div className="dashboard-sidebar-footer">
+          <div className="dashboard-tenant-badge">
+            <span className="dashboard-tenant-dot" />
+            <span>{tenantName || 'Tenant'}</span>
           </div>
         </div>
       </aside>
 
       {/* Main Content */}
-      <main className="obs-main">
+      <main className="dashboard-main">
         {/* Header */}
-        <header className="obs-header">
-          <div className="obs-header-left">
-            <h1 className="obs-page-title">
-              {activeView === "logs" && "Logs"}
-              {activeView === "metrics" && "Metrics"}
-              {activeView === "traces" && "Traces"}
+        <header className="dashboard-header">
+          <div className="dashboard-header-left">
+            <h1 className="dashboard-page-title">
+              {activeView === 'overview' && 'Dashboard'}
+              {activeView === 'logs' && 'Logs'}
+              {activeView === 'metrics' && 'Metrics'}
+              {activeView === 'traces' && 'Traces'}
+              {activeView === 'integration' && 'Integration'}
+              {activeView === 'settings' && 'Settings'}
+              {activeView === 'admin' && 'Platform Admin'}
             </h1>
-            <span className="obs-tenant-label">{tenantName || tenantId}</span>
+            <span className="dashboard-tenant-label">
+              {tenantName || tenantId}
+            </span>
           </div>
 
-          <div className="obs-header-right">
-            <button className="obs-refresh-btn" onClick={handleRefresh} title="Refresh data">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M23 4v6h-6M1 20v-6h6" />
-                <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
-              </svg>
+          <div className="dashboard-header-actions">
+            <button
+              onClick={toggleTheme}
+              className="dashboard-icon-btn"
+              title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+            >
+              {theme === 'dark' ? <Sun className="dashboard-btn-icon" /> : <Moon className="dashboard-btn-icon" />}
+            </button>
+            <button onClick={handleRefresh} className="dashboard-action-btn">
+              <RefreshCw className="dashboard-btn-icon" />
               Refresh
             </button>
-            <button className="obs-logout-btn" onClick={handleLogout}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
-                <polyline points="16 17 21 12 16 7" />
-                <line x1="21" y1="12" x2="9" y2="12" />
-              </svg>
+            <button onClick={handleLogout} className="dashboard-action-btn danger">
+              <LogOut className="dashboard-btn-icon" />
               Logout
             </button>
           </div>
         </header>
 
         {/* View Tabs */}
-        <div className="obs-view-tabs">
-          <button
-            className={`obs-view-tab ${activeView === "logs" ? "active" : ""}`}
-            onClick={() => setActiveView("logs")}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="8" y1="6" x2="21" y2="6" />
-              <line x1="8" y1="12" x2="21" y2="12" />
-              <line x1="8" y1="18" x2="21" y2="18" />
-              <line x1="3" y1="6" x2="3.01" y2="6" />
-              <line x1="3" y1="12" x2="3.01" y2="12" />
-              <line x1="3" y1="18" x2="3.01" y2="18" />
-            </svg>
-            Logs
-          </button>
-          <button
-            className={`obs-view-tab ${activeView === "metrics" ? "active" : ""}`}
-            onClick={() => setActiveView("metrics")}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-            </svg>
-            Metrics
-          </button>
-          <button
-            className={`obs-view-tab ${activeView === "traces" ? "active" : ""}`}
-            onClick={() => setActiveView("traces")}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <polygon points="12 2 2 7 12 12 22 7 12 2" />
-              <polyline points="2 17 12 22 22 17" />
-              <polyline points="2 12 12 17 22 12" />
-            </svg>
-            Traces
-          </button>
-        </div>
+        {activeView !== 'overview' && (
+          <div className="dashboard-tabs">
+            {[
+              { id: 'logs', label: 'Logs', icon: List },
+              { id: 'metrics', label: 'Metrics', icon: BarChart3 },
+              { id: 'traces', label: 'Traces', icon: GitBranch },
+            ].map(tab => (
+              <button
+                key={tab.id}
+                className={`dashboard-tab ${activeView === tab.id ? 'active' : ''}`}
+                onClick={() => setActiveView(tab.id as any)}
+              >
+                <tab.icon className="dashboard-tab-icon" />
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Content */}
-        <div className="obs-content">
-          {activeView === "logs" && <LogsPanel tenantId={tenantId} refreshKey={refreshKey} />}
-          {activeView === "metrics" && <MetricsChart tenantId={tenantId} refreshKey={refreshKey} />}
-          {activeView === "traces" && <TracesPanel tenantId={tenantId} refreshKey={refreshKey} />}
+        <div className="dashboard-content">
+          {activeView === 'overview' && (
+            <div className="dashboard-overview">
+              {/* Stats Grid */}
+              <div className="dashboard-stats-grid">
+                <div className="dashboard-stat-card">
+                  <div className="dashboard-stat-icon logs">
+                    <List className="dashboard-stat-svg" />
+                  </div>
+                  <div className="dashboard-stat-info">
+                    <span className="dashboard-stat-value">{stats.totalLogs}</span>
+                    <span className="dashboard-stat-label">Total Logs</span>
+                  </div>
+                </div>
+
+                <div className="dashboard-stat-card error">
+                  <div className="dashboard-stat-icon error">
+                    <AlertCircle className="dashboard-stat-svg" />
+                  </div>
+                  <div className="dashboard-stat-info">
+                    <span className="dashboard-stat-value">{stats.errorRate.toFixed(1)}%</span>
+                    <span className="dashboard-stat-label">Error Rate</span>
+                    <span className="dashboard-stat-sub">{stats.errorCount} errors</span>
+                  </div>
+                </div>
+
+                <div className="dashboard-stat-card">
+                  <div className="dashboard-stat-icon success">
+                    <TrendingUp className="dashboard-stat-svg" />
+                  </div>
+                  <div className="dashboard-stat-info">
+                    <span className="dashboard-stat-value">
+                      {stats.avgResponseTime.toFixed(0)}<small>ms</small>
+                    </span>
+                    <span className="dashboard-stat-label">Avg Response</span>
+                  </div>
+                </div>
+
+                <div className="dashboard-stat-card">
+                  <div className="dashboard-stat-icon traces">
+                    <GitBranch className="dashboard-stat-svg" />
+                  </div>
+                  <div className="dashboard-stat-info">
+                    <span className="dashboard-stat-value">{stats.activeTraces}</span>
+                    <span className="dashboard-stat-label">Active Traces</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Overview Panels */}
+              <div className="dashboard-panels-grid">
+                <div className="dashboard-panel">
+                  <h3 className="dashboard-panel-title">Recent Logs</h3>
+                  <LogsPanel tenantId={tenantId} refreshKey={refreshKey} compact />
+                </div>
+                <div className="dashboard-panel">
+                  <h3 className="dashboard-panel-title">Metrics</h3>
+                  <MetricsChart tenantId={tenantId} refreshKey={refreshKey} />
+                </div>
+              </div>
+            </div>
+          )}
+          {activeView === 'logs' && (
+            <LogsPanel tenantId={tenantId} refreshKey={refreshKey} />
+          )}
+          {activeView === 'metrics' && (
+            <MetricsChart tenantId={tenantId} refreshKey={refreshKey} />
+          )}
+          {activeView === 'traces' && (
+            <TracesPanel tenantId={tenantId} refreshKey={refreshKey} />
+          )}
+          {activeView === 'integration' && (
+            <IntegrationPanel apiKey={apiKey} tenantId={tenantId} />
+          )}
+          {activeView === 'settings' && (
+            <SettingsPanel token={token} onApiKeyChange={(newKey) => setApiKey(newKey)} />
+          )}
+          {activeView === 'admin' && isAdmin && (
+            <AdminPanel token={token} />
+          )}
         </div>
       </main>
     </div>
-  )
-}
+  );
+};
 
-const NavIcon = ({ name }: { name: string }): React.ReactElement | null => {
-  const icons: Record<string, React.ReactElement> = {
-    activity: (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-      </svg>
-    ),
-    layout: (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <rect x="3" y="3" width="18" height="18" rx="2" />
-        <line x1="3" y1="9" x2="21" y2="9" />
-        <line x1="9" y1="21" x2="9" y2="9" />
-      </svg>
-    ),
-    bell: (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" />
-        <path d="M13.73 21a2 2 0 01-3.46 0" />
-      </svg>
-    ),
-  }
-  return icons[name] || null
-}
-
-export default Dashboard
+export default Dashboard;

@@ -1,14 +1,19 @@
 # backend/app.py
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, g
 from flask_cors import CORS
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 import requests
 import os
-from datetime import datetime, timedelta
+import re
+import jwt
+from datetime import datetime, timedelta, timezone
 import logging
 import psycopg2
 from psycopg2.extras import RealDictCursor
 import bcrypt
 import secrets
+from functools import wraps
 from contextlib import nullcontext
 
 # Configure logging
@@ -22,17 +27,118 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 CORS(app, resources={
     r"/api/*": {
-        "origins": ["http://localhost:5173", "http://localhost:3000"],
+        "origins": ["http://localhost:5173", "http://localhost:3000", "http://localhost:3001"],
         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        "allow_headers": ["Content-Type", "Authorization"]
+        "allow_headers": ["Content-Type", "Authorization", "X-API-Key"]
     }
 })
+
+# Rate Limiter Configuration
+limiter = Limiter(
+    key_func=get_remote_address,
+    app=app,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://"
+)
+
+# JWT Configuration
+# JWT Configuration - Uses JWT_SECRET_KEY from environment
+JWT_SECRET = os.getenv("JWT_SECRET_KEY", secrets.token_hex(32))
+JWT_EXPIRY_HOURS = 24
 
 # Environment Configuration
 LOKI_URL = os.getenv("LOKI_URL", "http://localhost:3100")
 PROMETHEUS_URL = os.getenv("PROMETHEUS_URL", "http://localhost:9090")
 TEMPO_URL = os.getenv("TEMPO_URL", "http://localhost:3200")
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/observability")
+
+# ==================== SECURITY MIDDLEWARE ====================
+
+@app.after_request
+def add_security_headers(response):
+    """Add security headers to all responses"""
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate'
+    return response
+
+def validate_api_key(api_key):
+    """Validate API key against database"""
+    if not api_key:
+        return None
+    conn = get_db_connection()
+    if not conn:
+        return None
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("SELECT tenant_id FROM tenants WHERE api_key = %s AND is_active = TRUE", (api_key,))
+            result = cur.fetchone()
+            return result['tenant_id'] if result else None
+    except Exception as e:
+        logger.error(f"API key validation failed: {e}")
+        return None
+    finally:
+        conn.close()
+
+def require_api_key(f):
+    """Decorator to require valid API key for endpoints"""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        api_key = request.headers.get('X-API-Key')
+        tenant_id = validate_api_key(api_key)
+        if not tenant_id:
+            logger.warning(f"Invalid API key attempt from {request.remote_addr}")
+            return jsonify({"error": "Invalid or missing API key"}), 401
+        g.tenant_id = tenant_id
+        return f(*args, **kwargs)
+    return decorated
+
+def generate_jwt_token(tenant_id, tenant_name):
+    """Generate JWT token for authenticated session"""
+    payload = {
+        'tenant_id': tenant_id,
+        'tenant_name': tenant_name,
+        'exp': datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRY_HOURS),
+        'iat': datetime.now(timezone.utc)
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm='HS256')
+
+def verify_jwt_token(token):
+    """Verify and decode JWT token"""
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=['HS256'])
+        return payload
+    except jwt.ExpiredSignatureError:
+        return None
+    except jwt.InvalidTokenError:
+        return None
+
+def require_jwt(f):
+    """Decorator to require valid JWT token"""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return jsonify({"error": "Missing authorization token"}), 401
+        
+        token = auth_header.split(' ')[1]
+        payload = verify_jwt_token(token)
+        if not payload:
+            return jsonify({"error": "Invalid or expired token"}), 401
+        
+        g.tenant_id = payload['tenant_id']
+        g.tenant_name = payload['tenant_name']
+        return f(*args, **kwargs)
+    return decorated
+
+def sanitize_input(value, max_length=100, pattern=r'^[a-zA-Z0-9_-]+$'):
+    """Sanitize and validate input"""
+    if not value or len(value) > max_length:
+        return None
+    if not re.match(pattern, value):
+        return None
+    return value
 
 # ==================== DATABASE CONNECTION ====================
 
@@ -115,6 +221,7 @@ def register():
 # ==================== TENANT LOGIN ====================
 
 @app.route('/api/auth/login', methods=['POST'])
+@limiter.limit("5 per minute")  # Rate limit: 5 login attempts per minute
 def login():
     """Authenticate tenant"""
     try:
@@ -122,8 +229,13 @@ def login():
         tenant_id = data.get('tenant_id')
         password = data.get('password')
         
+        # Input validation
         if not tenant_id or not password:
             return jsonify({"error": "tenant_id and password required"}), 400
+        
+        # Sanitize tenant_id
+        if not sanitize_input(tenant_id, max_length=50):
+            return jsonify({"error": "Invalid tenant_id format"}), 400
         
         # Query database
         conn = get_db_connection()
@@ -153,11 +265,20 @@ def login():
                     logger.warning(f"Failed login - wrong password: {tenant_id}")
                     return jsonify({"error": "Invalid credentials"}), 401
                 
+                # Generate JWT token
+                token = generate_jwt_token(tenant['tenant_id'], tenant['company_name'])
+                
+                # Update last_login timestamp
+                cur.execute("UPDATE tenants SET last_login = NOW() WHERE tenant_id = %s", (tenant_id,))
+                conn.commit()
+                
                 logger.info(f"Successful login for tenant: {tenant_id}")
                 return jsonify({
                     "tenant_id": tenant['tenant_id'],
                     "name": tenant['company_name'],
                     "api_key": tenant['api_key'],
+                    "token": token,
+                    "expires_in": JWT_EXPIRY_HOURS * 3600,
                     "message": "Login successful"
                 }), 200
                 
@@ -187,11 +308,16 @@ def validate_tenant(tenant_id):
 # ==================== LOGS (LOKI) ====================
 
 @app.route('/api/logs', methods=['GET'])
+@limiter.limit("100 per minute")  # Rate limit: 100 requests per minute
 def get_logs():
     """Query logs from Loki for a specific tenant"""
     tenant_id = request.args.get('tenant_id')
     limit = request.args.get('limit', '100')
     level = request.args.get('level', '')
+    
+    # Input validation
+    if not sanitize_input(tenant_id, max_length=50):
+        return jsonify({"error": "Invalid tenant_id format"}), 400
     hours = int(request.args.get('hours', '1'))
     
     if not tenant_id:
@@ -201,9 +327,9 @@ def get_logs():
         return jsonify({"error": "Invalid or inactive tenant"}), 403
     
     if level:
-        logql_query = f'{{job="demo-app", level="{level}"}}'
+        logql_query = f'{{job="demo-app", tenant_id="{tenant_id}", level="{level}"}}'
     else:
-        logql_query = '{job="demo-app"}'
+        logql_query = f'{{job="demo-app", tenant_id="{tenant_id}"}}'
     
     end_time = datetime.now()
     start_time = end_time - timedelta(hours=hours)
@@ -228,7 +354,10 @@ def get_logs():
             stream_labels = stream.get('stream', {})
             for value in stream.get('values', []):
                 timestamp_ns = int(value[0])
-                timestamp_readable = datetime.fromtimestamp(timestamp_ns / 1e9).isoformat()
+                # Convert to UTC+1 (CET) for display
+                utc_dt = datetime.fromtimestamp(timestamp_ns / 1e9, tz=timezone.utc)
+                local_dt = utc_dt + timedelta(hours=1)  # UTC+1
+                timestamp_readable = local_dt.strftime('%Y-%m-%dT%H:%M:%S.%f')
                 
                 logs.append({
                     "timestamp": timestamp_readable,
@@ -259,10 +388,12 @@ def get_logs():
 # ==================== METRICS (PROMETHEUS) ====================
 
 @app.route('/api/metrics', methods=['GET'])
+@limiter.limit("100 per minute")
 def get_metrics():
-    """Query instant metrics from Prometheus"""
+    """Query metrics from Loki (stored as structured logs)"""
     tenant_id = request.args.get('tenant_id')
-    metric = request.args.get('metric', 'http_requests_total')
+    metric_name = request.args.get('metric', '')
+    hours = int(request.args.get('hours', '1'))
     
     if not tenant_id:
         return jsonify({"error": "tenant_id query parameter required"}), 400
@@ -270,33 +401,70 @@ def get_metrics():
     if not validate_tenant(tenant_id):
         return jsonify({"error": "Invalid or inactive tenant"}), 403
     
-    promql_query = f'{metric}{{job="demo-app"}}'
+    # Build Loki query for metrics logs
+    if metric_name:
+        logql_query = f'{{job="metrics-app", tenant_id="{tenant_id}", metric_name="{metric_name}"}}'
+    else:
+        logql_query = f'{{job="metrics-app", tenant_id="{tenant_id}"}}'
+    
+    end_time = datetime.now()
+    start_time = end_time - timedelta(hours=hours)
     
     try:
         response = requests.get(
-            f"{PROMETHEUS_URL}/api/v1/query",
-            params={"query": promql_query},
+            f"{LOKI_URL}/loki/api/v1/query_range",
+            params={
+                "query": logql_query,
+                "limit": 100,
+                "start": int(start_time.timestamp() * 1e9),
+                "end": int(end_time.timestamp() * 1e9)
+            },
             timeout=10
         )
         response.raise_for_status()
         
         data = response.json()
-        metrics = data.get('data', {}).get('result', [])
+        metrics = []
+        
+        # Parse metric logs
+        for stream in data.get('data', {}).get('result', []):
+            stream_labels = stream.get('stream', {})
+            metric_name = stream_labels.get('metric_name', 'unknown')
+            
+            for value in stream.get('values', []):
+                timestamp_ns = int(value[0])
+                message = value[1]  # Format: "metric_name=value"
+                
+                # Extract value from message
+                if '=' in message:
+                    metric_value = message.split('=')[1]
+                else:
+                    metric_value = message
+                
+                metrics.append({
+                    "timestamp": datetime.fromtimestamp(timestamp_ns / 1e9).isoformat(),
+                    "metric_name": metric_name,
+                    "value": metric_value,
+                    "labels": stream_labels
+                })
+        
+        # Sort by timestamp descending
+        metrics.sort(key=lambda x: x['timestamp'], reverse=True)
         
         logger.info(f"Retrieved {len(metrics)} metrics for tenant: {tenant_id}")
         return jsonify({
             "tenant_id": tenant_id,
             "metrics": metrics,
             "count": len(metrics),
-            "query": promql_query
+            "query": logql_query
         }), 200
         
     except requests.exceptions.ConnectionError:
-        logger.error(f"Cannot connect to Prometheus at {PROMETHEUS_URL}")
-        return jsonify({"error": "Prometheus service unavailable"}), 503
+        logger.error(f"Cannot connect to Loki at {LOKI_URL}")
+        return jsonify({"error": "Loki service unavailable"}), 503
     except requests.RequestException as e:
-        logger.error(f"Prometheus query failed: {str(e)}")
-        return jsonify({"error": f"Failed to query Prometheus: {str(e)}"}), 500
+        logger.error(f"Loki query failed: {str(e)}")
+        return jsonify({"error": f"Failed to query Loki: {str(e)}"}), 500
 
 @app.route('/api/metrics/range', methods=['GET'])
 def get_metrics_range():
@@ -347,8 +515,9 @@ def get_metrics_range():
 # ==================== TRACES (TEMPO) ====================
 
 @app.route('/api/traces', methods=['GET'])
+@limiter.limit("100 per minute")
 def get_traces():
-    """Query traces from Tempo"""
+    """Query traces from Tempo with multi-tenant filtering"""
     tenant_id = request.args.get('tenant_id')
     limit = request.args.get('limit', '20')
     
@@ -359,32 +528,151 @@ def get_traces():
         return jsonify({"error": "Invalid or inactive tenant"}), 403
     
     try:
+        # Query Tempo with TraceQL filtering by tenant_id for multi-tenancy isolation
+        # TraceQL filters traces where any span has the tenant_id attribute
+        traceql_query = f'{{ span.tenant_id = "{tenant_id}" }}'
+        
         response = requests.get(
             f"{TEMPO_URL}/api/search",
             params={
-                "tags": "service.name=demo-app",
-                "limit": limit
+                "q": traceql_query,
+                "limit": limit,
+                "start": int((datetime.now() - timedelta(hours=24)).timestamp()),
+                "end": int(datetime.now().timestamp())
+            },
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            traces = []
+            
+            for trace in data.get('traces', []):
+                traces.append({
+                    "traceID": trace.get('traceID', 'unknown'),
+                    "rootTraceName": trace.get('rootTraceName', 'unknown'),
+                    "rootServiceName": trace.get('rootServiceName', ''),
+                    "startTimeUnixNano": trace.get('startTimeUnixNano', '0'),
+                    "durationMs": trace.get('durationMs', 0),
+                    "status": "OK"
+                })
+            
+            logger.info(f"Retrieved {len(traces)} traces from Tempo for tenant: {tenant_id}")
+            return jsonify({
+                "tenant_id": tenant_id,
+                "traces": traces,
+                "count": len(traces),
+                "source": "tempo"
+            }), 200
+        else:
+            # Fallback to Loki for backward compatibility
+            return get_traces_from_loki(tenant_id, limit)
+            
+    except requests.exceptions.ConnectionError:
+        logger.warning(f"Tempo unavailable, falling back to Loki")
+        return get_traces_from_loki(tenant_id, limit)
+    except Exception as e:
+        logger.error(f"Tempo query failed: {str(e)}")
+        return get_traces_from_loki(tenant_id, limit)
+
+def get_traces_from_loki(tenant_id, limit):
+    """Fallback: Query traces from Loki"""
+    logql_query = f'{{job="traces-app", tenant_id="{tenant_id}", parent_span_id=""}}'
+    
+    try:
+        response = requests.get(
+            f"{LOKI_URL}/loki/api/v1/query_range",
+            params={
+                "query": logql_query,
+                "limit": limit,
+                "start": int((datetime.now() - timedelta(hours=24)).timestamp() * 1e9),
+                "end": int(datetime.now().timestamp() * 1e9)
             },
             timeout=10
         )
         response.raise_for_status()
         
         data = response.json()
-        traces = data.get('traces', [])
+        traces = []
         
-        logger.info(f"Retrieved {len(traces)} traces for tenant: {tenant_id}")
+        for stream in data.get('data', {}).get('result', []):
+            labels = stream.get('stream', {})
+            for value in stream.get('values', []):
+                timestamp_ns = int(value[0])
+                traces.append({
+                    "traceID": labels.get('trace_id', 'unknown'),
+                    "rootTraceName": labels.get('operation_name', 'unknown'),
+                    "rootServiceName": labels.get('service_name', 'unknown'),
+                    "startTimeUnixNano": str(timestamp_ns),
+                    "durationMs": int(labels.get('duration_ms', 0)),
+                    "status": labels.get('status', 'OK')
+                })
+        
+        traces.sort(key=lambda x: int(x['startTimeUnixNano']), reverse=True)
+        
         return jsonify({
             "tenant_id": tenant_id,
             "traces": traces,
-            "count": len(traces)
+            "count": len(traces),
+            "source": "loki"
         }), 200
         
-    except requests.exceptions.ConnectionError:
-        logger.error(f"Cannot connect to Tempo at {TEMPO_URL}")
-        return jsonify({"error": "Tempo service unavailable"}), 503
-    except requests.RequestException as e:
-        logger.error(f"Tempo query failed: {str(e)}")
-        return jsonify({"error": f"Failed to query Tempo: {str(e)}"}), 500
+    except Exception as e:
+        logger.error(f"Loki trace query failed: {str(e)}")
+        return jsonify({"error": "Failed to query traces"}), 500
+
+@app.route('/api/traces/<trace_id>', methods=['GET'])
+@limiter.limit("100 per minute")
+def get_trace_detail(trace_id):
+    """Get detailed trace with all spans from Tempo"""
+    try:
+        response = requests.get(
+            f"{TEMPO_URL}/api/traces/{trace_id}",
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            
+            # Parse trace into span hierarchy
+            spans = []
+            for batch in data.get('batches', []):
+                resource = batch.get('resource', {})
+                service_name = "unknown"
+                for attr in resource.get('attributes', []):
+                    if attr.get('key') == 'service.name':
+                        service_name = attr.get('value', {}).get('stringValue', 'unknown')
+                
+                for scope_span in batch.get('scopeSpans', []):
+                    for span in scope_span.get('spans', []):
+                        start_ns = int(span.get('startTimeUnixNano', 0))
+                        end_ns = int(span.get('endTimeUnixNano', 0))
+                        duration_ms = (end_ns - start_ns) / 1_000_000
+                        
+                        spans.append({
+                            "spanId": span.get('spanId', ''),
+                            "parentSpanId": span.get('parentSpanId', ''),
+                            "operationName": span.get('name', 'unknown'),
+                            "serviceName": service_name,
+                            "startTimeUnixNano": str(start_ns),
+                            "durationMs": round(duration_ms, 2),
+                            "status": "OK" if span.get('status', {}).get('code', 1) == 1 else "ERROR"
+                        })
+            
+            # Sort by start time to build hierarchy
+            spans.sort(key=lambda x: int(x['startTimeUnixNano']))
+            
+            return jsonify({
+                "traceId": trace_id,
+                "spans": spans,
+                "spanCount": len(spans)
+            }), 200
+        else:
+            return jsonify({"error": "Trace not found"}), 404
+            
+    except Exception as e:
+        logger.error(f"Failed to get trace detail: {str(e)}")
+        return jsonify({"error": f"Failed to get trace: {str(e)}"}), 500
 
 @app.route('/api/traces/search', methods=['GET'])
 def search_traces():
@@ -502,6 +790,342 @@ def root():
             "health": "GET /health"
         }
     }), 200
+
+# ==================== ADMIN ENDPOINTS ====================
+
+ADMIN_TENANT_ID = "admin"
+
+def require_admin(f):
+    """Decorator to require admin access"""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        # Check JWT token for admin
+        auth_header = request.headers.get('Authorization')
+        if auth_header and auth_header.startswith('Bearer '):
+            token = auth_header[7:]
+            payload = verify_jwt_token(token)
+            if payload and payload.get('tenant_id') == ADMIN_TENANT_ID:
+                return f(*args, **kwargs)
+        return jsonify({"error": "Admin access required"}), 403
+    return decorated
+
+@app.route('/api/admin/tenants', methods=['GET'])
+@limiter.limit("30 per minute")
+@require_admin
+def admin_get_tenants():
+    """Get all tenants with usage statistics (admin only)"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({"error": "Database connection failed"}), 500
+        
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            # Get all non-admin tenants
+            cur.execute("""
+                SELECT 
+                    tenant_id,
+                    company_name,
+                    email,
+                    api_key,
+                    is_active,
+                    created_at,
+                    last_login
+                FROM tenants
+                WHERE tenant_id != 'admin'
+                ORDER BY created_at DESC
+            """)
+            tenants = cur.fetchall()
+        
+        conn.close()
+        
+        # Format response
+        formatted_tenants = []
+        for t in tenants:
+            # Mask API key (show first 4 and last 4 chars)
+            api_key = t.get('api_key', '')
+            masked_key = f"{api_key[:7]}...{api_key[-4:]}" if len(api_key) > 12 else "***"
+            
+            formatted_tenants.append({
+                "tenant_id": t['tenant_id'],
+                "company_name": t['company_name'],
+                "email": t.get('email', ''),
+                "api_key_masked": masked_key,
+                "is_active": t['is_active'],
+                "created_at": t['created_at'].isoformat() if t.get('created_at') else None,
+                "last_login": t['last_login'].isoformat() if t.get('last_login') else None
+            })
+        
+        return jsonify({
+            "tenants": formatted_tenants,
+            "count": len(formatted_tenants)
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Admin get tenants failed: {str(e)}")
+        return jsonify({"error": "Failed to fetch tenants"}), 500
+
+@app.route('/api/admin/stats', methods=['GET'])
+@limiter.limit("30 per minute")
+@require_admin
+def admin_get_stats():
+    """Get platform-wide statistics (admin only)"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({"error": "Database connection failed"}), 500
+        
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            # Count tenants
+            cur.execute("SELECT COUNT(*) as count FROM tenants WHERE tenant_id != 'admin'")
+            tenant_count = cur.fetchone()['count']
+            
+            # Count active tenants (logged in last 24h)
+            cur.execute("""
+                SELECT COUNT(*) as count FROM tenants 
+                WHERE tenant_id != 'admin' 
+                AND last_login > NOW() - INTERVAL '24 hours'
+            """)
+            active_count = cur.fetchone()['count']
+        
+        conn.close()
+        
+        # Get Tempo trace count
+        trace_count = 0
+        try:
+            now = int(datetime.now().timestamp())
+            start = now - 86400  # 24 hours ago
+            resp = requests.get(
+                f"{TEMPO_URL}/api/search",
+                params={"limit": 1000, "start": start, "end": now},
+                timeout=5
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                trace_count = len(data.get('traces', []))
+        except:
+            pass
+        
+        return jsonify({
+            "total_tenants": tenant_count,
+            "active_tenants_24h": active_count,
+            "total_traces_24h": trace_count,
+            "platform_status": "healthy"
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Admin get stats failed: {str(e)}")
+        return jsonify({"error": "Failed to fetch stats"}), 500
+
+@app.route('/api/admin/tenant/<tenant_id>/toggle', methods=['POST'])
+@limiter.limit("10 per minute")
+@require_admin
+def admin_toggle_tenant(tenant_id):
+    """Toggle tenant active status (admin only)"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({"error": "Database connection failed"}), 500
+        
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("""
+                UPDATE tenants 
+                SET is_active = NOT is_active 
+                WHERE tenant_id = %s AND tenant_id != 'admin'
+                RETURNING tenant_id, is_active
+            """, (tenant_id,))
+            result = cur.fetchone()
+            conn.commit()
+        
+        conn.close()
+        
+        if result:
+            return jsonify({
+                "success": True,
+                "tenant_id": result['tenant_id'],
+                "is_active": result['is_active']
+            }), 200
+        else:
+            return jsonify({"error": "Tenant not found"}), 404
+            
+    except Exception as e:
+        logger.error(f"Admin toggle tenant failed: {str(e)}")
+        return jsonify({"error": "Failed to toggle tenant"}), 500
+
+# ==================== USER SETTINGS ENDPOINTS ====================
+
+@app.route('/api/user/profile', methods=['GET'])
+@limiter.limit("30 per minute")
+@require_jwt
+def get_user_profile():
+    """Get current user's profile information"""
+    try:
+        tenant_id = g.tenant_id
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({"error": "Database connection failed"}), 500
+        
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("""
+                SELECT tenant_id, company_name, email, api_key, created_at, last_login
+                FROM tenants WHERE tenant_id = %s
+            """, (tenant_id,))
+            user = cur.fetchone()
+        
+        conn.close()
+        
+        if user:
+            return jsonify({
+                "tenant_id": user['tenant_id'],
+                "company_name": user['company_name'],
+                "email": user['email'],
+                "api_key": user['api_key'],
+                "created_at": user['created_at'].isoformat() if user['created_at'] else None,
+                "last_login": user['last_login'].isoformat() if user['last_login'] else None
+            }), 200
+        else:
+            return jsonify({"error": "User not found"}), 404
+            
+    except Exception as e:
+        logger.error(f"Get profile failed: {str(e)}")
+        return jsonify({"error": "Failed to get profile"}), 500
+
+@app.route('/api/user/password', methods=['PUT'])
+@limiter.limit("5 per minute")
+@require_jwt
+def change_password():
+    """Change current user's password"""
+    try:
+        tenant_id = g.tenant_id
+        data = request.get_json()
+        
+        current_password = data.get('current_password', '')
+        new_password = data.get('new_password', '')
+        
+        if not current_password or not new_password:
+            return jsonify({"error": "Current and new password required"}), 400
+        
+        if len(new_password) < 6:
+            return jsonify({"error": "New password must be at least 6 characters"}), 400
+        
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({"error": "Database connection failed"}), 500
+        
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            # Verify current password
+            cur.execute("SELECT password_hash FROM tenants WHERE tenant_id = %s", (tenant_id,))
+            user = cur.fetchone()
+            
+            if not user or not bcrypt.checkpw(current_password.encode('utf-8'), user['password_hash'].encode('utf-8')):
+                conn.close()
+                return jsonify({"error": "Current password is incorrect"}), 401
+            
+            # Hash new password and update
+            new_hash = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            cur.execute("UPDATE tenants SET password_hash = %s WHERE tenant_id = %s", (new_hash, tenant_id))
+            conn.commit()
+        
+        conn.close()
+        logger.info(f"Password changed for tenant: {tenant_id}")
+        return jsonify({"success": True, "message": "Password changed successfully"}), 200
+        
+    except Exception as e:
+        logger.error(f"Change password failed: {str(e)}")
+        return jsonify({"error": "Failed to change password"}), 500
+
+@app.route('/api/user/api-key', methods=['POST'])
+@limiter.limit("3 per minute")
+@require_jwt
+def regenerate_api_key():
+    """Regenerate current user's API key"""
+    try:
+        tenant_id = g.tenant_id
+        
+        # Generate new API key
+        new_api_key = f"sk_{tenant_id}_{secrets.token_hex(16)}"
+        
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({"error": "Database connection failed"}), 500
+        
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("""
+                UPDATE tenants SET api_key = %s WHERE tenant_id = %s
+                RETURNING api_key
+            """, (new_api_key, tenant_id))
+            result = cur.fetchone()
+            conn.commit()
+        
+        conn.close()
+        
+        if result:
+            logger.info(f"API key regenerated for tenant: {tenant_id}")
+            return jsonify({
+                "success": True,
+                "api_key": result['api_key'],
+                "message": "API key regenerated successfully"
+            }), 200
+        else:
+            return jsonify({"error": "Failed to regenerate API key"}), 500
+            
+    except Exception as e:
+        logger.error(f"Regenerate API key failed: {str(e)}")
+        return jsonify({"error": "Failed to regenerate API key"}), 500
+
+@app.route('/api/user/profile', methods=['PUT'])
+@limiter.limit("10 per minute")
+@require_jwt
+def update_profile():
+    """Update current user's profile (company name, email)"""
+    try:
+        tenant_id = g.tenant_id
+        data = request.get_json()
+        
+        company_name = data.get('company_name')
+        email = data.get('email')
+        
+        if not company_name and not email:
+            return jsonify({"error": "No fields to update"}), 400
+        
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({"error": "Database connection failed"}), 500
+        
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            updates = []
+            values = []
+            
+            if company_name:
+                updates.append("company_name = %s")
+                values.append(company_name)
+            if email:
+                updates.append("email = %s")
+                values.append(email)
+            
+            values.append(tenant_id)
+            
+            cur.execute(f"""
+                UPDATE tenants SET {', '.join(updates)} WHERE tenant_id = %s
+                RETURNING company_name, email
+            """, tuple(values))
+            result = cur.fetchone()
+            conn.commit()
+        
+        conn.close()
+        
+        if result:
+            return jsonify({
+                "success": True,
+                "company_name": result['company_name'],
+                "email": result['email'],
+                "message": "Profile updated successfully"
+            }), 200
+        else:
+            return jsonify({"error": "Failed to update profile"}), 500
+            
+    except Exception as e:
+        logger.error(f"Update profile failed: {str(e)}")
+        return jsonify({"error": "Failed to update profile"}), 500
 
 # ==================== ERROR HANDLERS ====================
 

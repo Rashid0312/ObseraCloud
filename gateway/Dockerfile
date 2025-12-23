@@ -7,4 +7,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-CMD ["python", "-m", "gunicorn", "--bind", "0.0.0.0:5000", "--chdir", "/app", "app:app"]
+EXPOSE 4319
+
+CMD ["gunicorn", "--bind", "0.0.0.0:4319", "--workers", "4", "--timeout", "30", "auth_gateway:app"]

@@ -49,3 +49,8 @@ observability-mvp/prometheus-data/
 observability-mvp/loki-data/
 observability-mvp/tempo-data/
 observability-mvp/grafana-data/
+
+# Environment files
+.env
+.env.local
+.env.*.local

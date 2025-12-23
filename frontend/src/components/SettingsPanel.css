@@ -1,0 +1,266 @@
+/* Settings Panel Styles */
+
+.settings-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.settings-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 48px;
+    color: hsl(220 15% 60%);
+}
+
+.settings-spinner {
+    width: 24px;
+    height: 24px;
+    border: 2px solid hsl(220 20% 15%);
+    border-top-color: hsl(220 30% 75%);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Messages */
+.settings-message {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 18px;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.settings-message.success {
+    background: hsl(160 70% 45% / 0.15);
+    border: 1px solid hsl(160 70% 40% / 0.4);
+    color: hsl(160 70% 55%);
+}
+
+.settings-message.error {
+    background: hsl(0 70% 50% / 0.15);
+    border: 1px solid hsl(0 70% 45% / 0.4);
+    color: hsl(0 70% 60%);
+}
+
+/* Section */
+.settings-section {
+    background: linear-gradient(145deg, hsl(220 15% 8% / 0.95), hsl(220 15% 5% / 0.98));
+    border: 1px solid hsl(220 25% 20% / 0.4);
+    border-radius: 14px;
+    padding: 24px;
+}
+
+.settings-section-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid hsl(220 20% 15%);
+}
+
+.settings-section-header h3 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: hsl(220 20% 95%);
+}
+
+.settings-section-header svg {
+    color: hsl(45 90% 55%);
+}
+
+/* Info Grid */
+.settings-info-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+}
+
+.settings-info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.settings-info-item .label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: hsl(220 15% 55%);
+}
+
+.settings-info-item code {
+    font-family: 'JetBrains Mono', 'SF Mono', monospace;
+    font-size: 0.9rem;
+    color: hsl(210 80% 70%);
+    background: hsl(220 20% 10%);
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid hsl(220 25% 18%);
+}
+
+.settings-info-item span:not(.label) {
+    color: hsl(220 20% 90%);
+    font-size: 0.9rem;
+}
+
+/* Form */
+.settings-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.settings-form .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.settings-form label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: hsl(220 15% 70%);
+}
+
+.settings-form input {
+    padding: 12px 14px;
+    background: hsl(220 15% 6%);
+    border: 1px solid hsl(220 20% 18%);
+    border-radius: 8px;
+    color: hsl(220 20% 95%);
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+}
+
+.settings-form input:focus {
+    outline: none;
+    border-color: hsl(220 30% 40%);
+    box-shadow: 0 0 0 3px hsl(220 40% 50% / 0.1);
+}
+
+.settings-form input::placeholder {
+    color: hsl(220 15% 40%);
+}
+
+/* Password Input */
+.password-input {
+    position: relative;
+    display: flex;
+}
+
+.password-input input {
+    flex: 1;
+    padding-right: 44px;
+}
+
+.password-input button {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: hsl(220 15% 50%);
+    cursor: pointer;
+    padding: 4px;
+    transition: color 0.2s;
+}
+
+.password-input button:hover {
+    color: hsl(220 20% 80%);
+}
+
+/* Buttons */
+.settings-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    width: fit-content;
+}
+
+.settings-btn.primary {
+    background: linear-gradient(135deg, hsl(220 30% 25%), hsl(220 25% 20%));
+    border: 1px solid hsl(220 30% 35%);
+    color: hsl(220 20% 95%);
+}
+
+.settings-btn.primary:hover:not(:disabled) {
+    background: linear-gradient(135deg, hsl(220 30% 30%), hsl(220 25% 25%));
+    border-color: hsl(220 35% 45%);
+}
+
+.settings-btn.danger {
+    background: hsl(0 70% 50% / 0.15);
+    border: 1px solid hsl(0 70% 45% / 0.4);
+    color: hsl(0 70% 60%);
+}
+
+.settings-btn.danger:hover:not(:disabled) {
+    background: hsl(0 70% 50% / 0.25);
+    border-color: hsl(0 70% 50%);
+}
+
+.settings-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* API Key Display */
+.api-key-display {
+    background: hsl(220 15% 6%);
+    border: 1px solid hsl(220 20% 18%);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+}
+
+.api-key-display code {
+    font-family: 'JetBrains Mono', 'SF Mono', monospace;
+    font-size: 0.85rem;
+    color: hsl(160 70% 55%);
+    word-break: break-all;
+}
+
+.settings-hint {
+    font-size: 0.8rem;
+    color: hsl(220 15% 55%);
+    margin: 0 0 16px 0;
+    line-height: 1.5;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .settings-info-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .settings-section {
+        padding: 18px;
+    }
+}

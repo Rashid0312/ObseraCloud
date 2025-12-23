@@ -1,0 +1,196 @@
+# SkyView Production Docker Compose
+# Reads secrets from .env file - copy .env.example to .env and configure
+
+services:
+  # ===========================================
+  # DATABASE (not exposed externally)
+  # ===========================================
+  postgres:
+    image: postgres:15-alpine
+    container_name: skyview-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-skyview}
+      POSTGRES_USER: ${POSTGRES_USER:-skyview_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    # Port NOT exposed externally for security - only accessible within docker network
+    # Uncomment for local development if needed:
+    # ports:
+    #   - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./backend/database.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - skyview-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-skyview_user}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ===========================================
+  # BACKEND API
+  # ===========================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: skyview-backend
+    ports:
+      - "5001:5000"
+    environment:
+      - FLASK_ENV=${FLASK_ENV:-production}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-skyview_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-skyview}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:?JWT_SECRET_KEY is required}
+      - PROMETHEUS_URL=${PROMETHEUS_URL:-http://prometheus:9090}
+      - LOKI_URL=${LOKI_URL:-http://loki:3100}
+      - TEMPO_URL=${TEMPO_URL:-http://tempo:3200}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - skyview-net
+    restart: unless-stopped
+
+  # ===========================================
+  # FRONTEND
+  # ===========================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_BASE_URL=${VITE_API_BASE_URL:-http://localhost:5001}
+    container_name: skyview-frontend
+    ports:
+      - "3001:80"
+    depends_on:
+      - backend
+    networks:
+      - skyview-net
+    restart: unless-stopped
+
+  # ===========================================
+  # NGINX REVERSE PROXY (for HTTPS)
+  # ===========================================
+  nginx:
+    image: nginx:alpine
+    container_name: skyview-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./nginx/html:/usr/share/nginx/html:ro
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - skyview-net
+    restart: unless-stopped
+    profiles:
+      - production
+
+  # ===========================================
+  # OBSERVABILITY STACK
+  # ===========================================
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: skyview-prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./backend/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    networks:
+      - skyview-net
+    restart: unless-stopped
+
+  loki:
+    image: grafana/loki:latest
+    container_name: skyview-loki
+    command: -config.file=/etc/loki/loki-config.yaml
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./backend/loki-config.yaml:/etc/loki/loki-config.yaml
+      - loki-data:/loki
+    networks:
+      - skyview-net
+    restart: unless-stopped
+
+  tempo:
+    image: grafana/tempo:latest
+    container_name: skyview-tempo
+    command: [ "-config.file=/etc/tempo/tempo-config.yaml" ]
+    ports:
+      - "3200:3200"
+    volumes:
+      - ./tempo/tempo-config.yaml:/etc/tempo/tempo-config.yaml
+      - tempo-data:/tmp/tempo
+    networks:
+      - skyview-net
+    restart: unless-stopped
+
+  # ===========================================
+  # OTLP GATEWAY & COLLECTOR
+  # ===========================================
+  auth-gateway:
+    build:
+      context: ./gateway
+      dockerfile: Dockerfile
+    container_name: skyview-auth-gateway
+    ports:
+      - "4319:4319"
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-skyview_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-skyview}
+      - OTEL_COLLECTOR_URL=http://otel-collector:4318
+    depends_on:
+      postgres:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
+    networks:
+      - skyview-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4319/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    container_name: skyview-otel-collector
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./otel-collector/otel-config.yaml:/etc/otel-collector-config.yaml
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+      - "13133:13133"
+    depends_on:
+      - tempo
+      - loki
+    networks:
+      - skyview-net
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:13133/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+networks:
+  skyview-net:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  prometheus-data:
+  loki-data:
+  tempo-data:

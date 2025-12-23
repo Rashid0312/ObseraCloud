@@ -1,0 +1,353 @@
+/* Admin Panel Styles - Consistent with Dashboard theme */
+
+.admin-panel {
+    background: linear-gradient(145deg, hsl(220 15% 8% / 0.95), hsl(220 15% 5% / 0.98));
+    border: 1px solid hsl(220 25% 20% / 0.4);
+    border-radius: 1rem;
+    overflow: hidden;
+}
+
+.admin-loading,
+.admin-error {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 48px;
+    color: hsl(220 15% 60%);
+}
+
+.admin-error {
+    color: hsl(0 70% 60%);
+    background: hsl(0 70% 50% / 0.1);
+    border-radius: 0.75rem;
+}
+
+.admin-spinner {
+    width: 24px;
+    height: 24px;
+    border: 2px solid hsl(220 20% 15%);
+    border-top-color: hsl(220 30% 75%);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Header */
+.admin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 24px;
+    border-bottom: 1px solid hsl(220 20% 15%);
+    background: hsl(220 15% 6% / 0.8);
+}
+
+.admin-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: hsl(220 20% 95%);
+}
+
+.admin-title h2 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 700;
+}
+
+.admin-title svg {
+    color: hsl(45 90% 55%);
+}
+
+.admin-refresh-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: hsl(220 20% 12%);
+    border: 1px solid hsl(220 25% 25%);
+    border-radius: 8px;
+    color: hsl(220 15% 80%);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.admin-refresh-btn:hover {
+    background: hsl(220 20% 18%);
+    border-color: hsl(220 30% 40%);
+}
+
+/* Stats Grid */
+.admin-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    padding: 24px;
+    border-bottom: 1px solid hsl(220 20% 12%);
+}
+
+.admin-stat-card {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 20px;
+    background: hsl(220 15% 6%);
+    border: 1px solid hsl(220 20% 15%);
+    border-radius: 12px;
+    transition: all 0.2s ease;
+}
+
+.admin-stat-card:hover {
+    border-color: hsl(220 25% 25%);
+    transform: translateY(-2px);
+}
+
+.admin-stat-icon {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+}
+
+.admin-stat-icon.users {
+    background: hsl(210 80% 50% / 0.2);
+    color: hsl(210 80% 60%);
+}
+
+.admin-stat-icon.active {
+    background: hsl(160 70% 45% / 0.2);
+    color: hsl(160 70% 55%);
+}
+
+.admin-stat-icon.traces {
+    background: hsl(280 70% 50% / 0.2);
+    color: hsl(280 70% 60%);
+}
+
+.admin-stat-icon.healthy {
+    background: hsl(160 70% 45% / 0.2);
+    color: hsl(160 70% 55%);
+}
+
+.admin-stat-icon.warning {
+    background: hsl(45 90% 50% / 0.2);
+    color: hsl(45 90% 55%);
+}
+
+.admin-stat-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.admin-stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: hsl(220 20% 95%);
+}
+
+.admin-stat-label {
+    font-size: 0.8rem;
+    color: hsl(220 15% 60%);
+}
+
+/* Tenants Section */
+.admin-tenants-section {
+    padding: 24px;
+}
+
+.admin-section-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 20px 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: hsl(220 20% 85%);
+}
+
+/* Table */
+.admin-table-container {
+    overflow-x: auto;
+    border: 1px solid hsl(220 20% 15%);
+    border-radius: 10px;
+}
+
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.admin-table th {
+    padding: 14px 16px;
+    text-align: left;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: hsl(220 15% 55%);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    background: hsl(220 15% 8%);
+    border-bottom: 1px solid hsl(220 20% 15%);
+}
+
+.admin-table td {
+    padding: 14px 16px;
+    font-size: 0.875rem;
+    color: hsl(220 15% 85%);
+    border-bottom: 1px solid hsl(220 20% 12%);
+}
+
+.admin-table tr:last-child td {
+    border-bottom: none;
+}
+
+.admin-table tr:hover td {
+    background: hsl(220 15% 8%);
+}
+
+.admin-table tr.inactive td {
+    opacity: 0.6;
+}
+
+/* Table Cells */
+.tenant-id code {
+    font-family: 'JetBrains Mono', 'SF Mono', monospace;
+    font-size: 0.8rem;
+    padding: 4px 8px;
+    background: hsl(220 20% 10%);
+    border: 1px solid hsl(220 25% 18%);
+    border-radius: 4px;
+    color: hsl(210 80% 70%);
+}
+
+.tenant-company {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.tenant-company span {
+    font-weight: 600;
+    color: hsl(220 20% 95%);
+}
+
+.tenant-company small {
+    font-size: 0.75rem;
+    color: hsl(220 15% 55%);
+}
+
+.tenant-apikey code {
+    font-family: 'JetBrains Mono', 'SF Mono', monospace;
+    font-size: 0.75rem;
+    color: hsl(220 15% 60%);
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.status-badge.active {
+    background: hsl(160 70% 45% / 0.2);
+    color: hsl(160 70% 55%);
+}
+
+.status-badge.inactive {
+    background: hsl(0 70% 50% / 0.2);
+    color: hsl(0 70% 60%);
+}
+
+.tenant-date {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    color: hsl(220 15% 60%);
+}
+
+.tenant-last-active .recent {
+    color: hsl(160 70% 55%);
+}
+
+.tenant-last-active .never {
+    color: hsl(220 15% 50%);
+}
+
+.toggle-btn {
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid;
+}
+
+.toggle-btn.deactivate {
+    background: hsl(0 70% 50% / 0.15);
+    border-color: hsl(0 70% 45% / 0.4);
+    color: hsl(0 70% 60%);
+}
+
+.toggle-btn.deactivate:hover {
+    background: hsl(0 70% 50% / 0.25);
+    border-color: hsl(0 70% 50%);
+}
+
+.toggle-btn.activate {
+    background: hsl(160 70% 45% / 0.15);
+    border-color: hsl(160 70% 40% / 0.4);
+    color: hsl(160 70% 55%);
+}
+
+.toggle-btn.activate:hover {
+    background: hsl(160 70% 45% / 0.25);
+    border-color: hsl(160 70% 50%);
+}
+
+/* Empty State */
+.admin-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 48px;
+    color: hsl(220 15% 50%);
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+    .admin-stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .admin-stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-table {
+        font-size: 0.8rem;
+    }
+
+    .admin-table th,
+    .admin-table td {
+        padding: 10px 12px;
+    }
+}

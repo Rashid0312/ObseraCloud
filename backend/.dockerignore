@@ -1,0 +1,17 @@
+# Exclude app directory to avoid naming conflict with app.py module
+app/
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info
+dist
+build
+venv
+.venv
+*.log
+.env
+.DS_Store

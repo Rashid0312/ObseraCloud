@@ -1,110 +1,173 @@
-"use client"
-
-import type React from "react"
-import { useState, type FormEvent, type ChangeEvent } from "react"
-import "./Login.css"
+import React, { useState } from 'react';
+import { API_BASE_URL } from '../config';
+import { Layers } from 'lucide-react';
+import './Auth.css';
 
 interface LoginProps {
-  onLoginSuccess: (tenantId: string) => void
+  onLoginSuccess: (data: any) => void;
 }
 
 const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
-  const [tenantId, setTenantId] = useState<string>("")
-  const [password, setPassword] = useState<string>("")
-  const [error, setError] = useState<string>("")
-  const [loading, setLoading] = useState<boolean>(false)
+  const [isSignup, setIsSignup] = useState(false);
+  const [tenantId, setTenantId] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [companyName, setCompanyName] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    setError("")
-    setLoading(true)
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
 
     try {
-      const response = await fetch("http://localhost:5001/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tenant_id: tenantId, password }),
-      })
+      const endpoint = isSignup ? '/api/auth/register' : '/api/auth/login';
+      const body = isSignup
+        ? { tenant_id: tenantId, email, password, company_name: companyName }
+        : { tenant_id: tenantId, password };
+
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+
+      const data = await response.json();
 
       if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || "Login failed")
+        setError(data.error || 'Authentication failed');
+        setLoading(false);
+        return;
       }
 
-      const data = await response.json()
-      localStorage.setItem("tenant_id", data.tenant_id)
-      localStorage.setItem("tenant_name", data.name)
-      onLoginSuccess(data.tenant_id)
+      const authData = {
+        token: data.token,
+        tenant_id: data.tenant_id,
+        company_name: data.company_name || data.name,
+        api_key: data.api_key
+      };
+
+      localStorage.setItem('token', authData.token);
+      localStorage.setItem('tenant_id', authData.tenant_id);
+      localStorage.setItem('tenant_name', authData.company_name);
+      localStorage.setItem('api_key', authData.api_key);
+
+      onLoginSuccess(authData);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed. Please try again.")
-    } finally {
-      setLoading(false)
+      setError('Network error. Please try again.');
+      setLoading(false);
     }
-  }
+  };
 
   return (
-    <div className="obs-login-container">
-      <div className="obs-login-glow" />
-      <div className="obs-login-box">
-        <div className="obs-login-logo">
-          <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-            <rect width="40" height="40" rx="8" fill="url(#gradient)" />
-            <path d="M12 20L18 26L28 14" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-            <defs>
-              <linearGradient id="gradient" x1="0" y1="0" x2="40" y2="40">
-                <stop stopColor="#8B5CF6" />
-                <stop offset="1" stopColor="#6366F1" />
-              </linearGradient>
-            </defs>
-          </svg>
-        </div>
-        <h1 className="obs-login-title">Observability Platform</h1>
-        <p className="obs-login-subtitle">Sign in to your dashboard</p>
+    <div className="auth-container">
+      {/* Animated gradient orbs - handled by CSS ::before and ::after */}
 
-        <form onSubmit={handleLogin} className="obs-login-form">
-          <div className="obs-form-group">
-            <label htmlFor="tenantId">Tenant ID</label>
+      <div className="auth-card">
+        {/* Header */}
+        <div className="auth-header">
+          <Layers className="auth-logo-icon" />
+          <h1>SkyView</h1>
+          <p>Multi-Tenant Observability Platform</p>
+        </div>
+
+        {/* Tabs */}
+        <div className="auth-tabs">
+          <button
+            className={!isSignup ? 'active' : ''}
+            onClick={() => setIsSignup(false)}
+          >
+            Login
+          </button>
+          <button
+            className={isSignup ? 'active' : ''}
+            onClick={() => setIsSignup(true)}
+          >
+            Sign Up
+          </button>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="auth-form">
+          {isSignup && (
+            <div className="form-group">
+              <label>Company Name</label>
+              <input
+                type="text"
+                value={companyName}
+                onChange={(e) => setCompanyName(e.target.value)}
+                placeholder="Acme Corp"
+                required={isSignup}
+              />
+            </div>
+          )}
+
+          <div className="form-group">
+            <label>Tenant ID</label>
             <input
               type="text"
-              id="tenantId"
               value={tenantId}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => setTenantId(e.target.value)}
-              placeholder="acme-corp"
+              onChange={(e) => setTenantId(e.target.value)}
+              placeholder="acme"
               required
-              disabled={loading}
             />
           </div>
 
-          <div className="obs-form-group">
-            <label htmlFor="password">Password</label>
+          {isSignup && (
+            <div className="form-group">
+              <label>Email</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="admin@company.com"
+                required={isSignup}
+              />
+            </div>
+          )}
+
+          <div className="form-group">
+            <label>Password</label>
             <input
               type="password"
-              id="password"
               value={password}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
-              placeholder="••••••••"
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter password"
               required
-              disabled={loading}
             />
           </div>
 
-          {error && <div className="obs-error-message">{error}</div>}
+          {error && (
+            <div className="auth-error">
+              {error}
+            </div>
+          )}
 
-          <button type="submit" className="obs-login-button" disabled={loading}>
-            {loading ? <span className="obs-loading-spinner" /> : "Sign in"}
+          <button
+            type="submit"
+            disabled={loading}
+            className="auth-submit"
+          >
+            {loading && <div className="loading-spinner" />}
+            {loading ? 'Loading...' : (isSignup ? 'Create Account' : 'Login')}
           </button>
         </form>
 
-        <div className="obs-demo-credentials">
-          <p className="obs-demo-title">Demo credentials</p>
-          <div className="obs-demo-items">
-            <code>acme-corp / acme123</code>
-            <code>beta-inc / beta456</code>
+        {/* Demo Accounts */}
+        {!isSignup && (
+          <div className="auth-demo">
+            <p>Demo Accounts</p>
+            <ul>
+              <li>admin@acme.com (password: demo123)</li>
+              <li>admin@globex.com (password: demo123)</li>
+              <li>admin@initech.com (password: demo123)</li>
+            </ul>
           </div>
-        </div>
+        )}
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default Login
+export default Login;

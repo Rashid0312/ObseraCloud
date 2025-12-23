@@ -1,0 +1,240 @@
+/* Integration Panel Styles */
+
+.integration-panel {
+    background: linear-gradient(145deg, hsl(220 15% 8% / 0.95), hsl(220 15% 5% / 0.98));
+    border: 1px solid hsl(220 25% 20% / 0.4);
+    border-radius: 1rem;
+    overflow: hidden;
+}
+
+.integration-header {
+    padding: 24px;
+    border-bottom: 1px solid hsl(220 20% 15%);
+    background: hsl(220 15% 6% / 0.8);
+}
+
+.integration-header h2 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: hsl(220 20% 95%);
+    margin: 0 0 6px 0;
+}
+
+.integration-header p {
+    color: hsl(220 15% 60%);
+    font-size: 0.875rem;
+    margin: 0;
+}
+
+.integration-section {
+    padding: 20px 24px;
+    border-bottom: 1px solid hsl(220 20% 12%);
+}
+
+.integration-section:last-child {
+    border-bottom: none;
+}
+
+.section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: hsl(220 25% 70%);
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* API Key Section */
+.api-key-section {
+    background: hsl(160 60% 40% / 0.08);
+}
+
+.api-key-box {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: hsl(220 15% 6%);
+    border: 1px solid hsl(160 60% 40% / 0.3);
+    border-radius: 8px;
+    padding: 12px 16px;
+}
+
+.api-key-value {
+    flex: 1;
+    font-family: 'JetBrains Mono', 'SF Mono', monospace;
+    font-size: 0.9rem;
+    color: hsl(160 70% 60%);
+    word-break: break-all;
+}
+
+.api-key-hint {
+    margin-top: 10px;
+    font-size: 0.75rem;
+    color: hsl(220 15% 55%);
+}
+
+/* Endpoint Box */
+.endpoint-box {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: hsl(220 15% 6%);
+    border: 1px solid hsl(220 25% 20%);
+    border-radius: 8px;
+    padding: 12px 16px;
+}
+
+.endpoint-box code {
+    flex: 1;
+    font-family: 'JetBrains Mono', 'SF Mono', monospace;
+    font-size: 0.85rem;
+    color: hsl(210 80% 70%);
+}
+
+/* Copy Button */
+.copy-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    background: hsl(220 20% 12%);
+    border: 1px solid hsl(220 25% 25%);
+    border-radius: 6px;
+    color: hsl(220 15% 70%);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.copy-btn:hover {
+    background: hsl(220 20% 18%);
+    border-color: hsl(220 30% 40%);
+    color: hsl(220 20% 95%);
+}
+
+.copy-btn.small {
+    width: 28px;
+    height: 28px;
+    margin-left: auto;
+}
+
+/* Code Examples */
+.code-examples .section-title {
+    margin-bottom: 16px;
+}
+
+.code-block {
+    background: hsl(220 15% 5%);
+    border: 1px solid hsl(220 20% 15%);
+    border-radius: 8px;
+    margin-bottom: 10px;
+    overflow: hidden;
+}
+
+.code-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: hsl(220 15% 8%);
+    border-bottom: 1px solid hsl(220 20% 12%);
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.code-header:hover {
+    background: hsl(220 15% 10%);
+}
+
+.lang-badge {
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 4px;
+    text-transform: uppercase;
+}
+
+.lang-badge.python {
+    background: hsl(210 70% 50% / 0.2);
+    color: hsl(210 80% 65%);
+}
+
+.lang-badge.javascript {
+    background: hsl(50 90% 50% / 0.2);
+    color: hsl(50 90% 55%);
+}
+
+.lang-badge.curl {
+    background: hsl(160 60% 40% / 0.2);
+    color: hsl(160 70% 55%);
+}
+
+.code-header span:not(.lang-badge) {
+    font-size: 0.8rem;
+    color: hsl(220 15% 70%);
+}
+
+.code-content {
+    margin: 0;
+    padding: 16px;
+    overflow-x: auto;
+    font-family: 'JetBrains Mono', 'SF Mono', monospace;
+    font-size: 0.75rem;
+    line-height: 1.6;
+    color: hsl(220 15% 80%);
+    background: hsl(220 15% 4%);
+}
+
+.code-content code {
+    font-family: inherit;
+}
+
+/* Support Section */
+.support-section {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    background: hsl(220 20% 8%);
+    color: hsl(220 15% 70%);
+}
+
+.support-section svg {
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.support-section strong {
+    color: hsl(220 15% 90%);
+    display: block;
+    margin-bottom: 4px;
+}
+
+.support-section p {
+    margin: 0;
+    font-size: 0.8rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+
+    .integration-header,
+    .integration-section {
+        padding: 16px;
+    }
+
+    .api-key-value,
+    .endpoint-box code {
+        font-size: 0.75rem;
+    }
+
+    .code-content {
+        font-size: 0.7rem;
+        padding: 12px;
+    }
+}

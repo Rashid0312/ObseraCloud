@@ -1,30 +1,51 @@
-import React, { useState, useEffect } from 'react';
-import Login from './components/Login';
+import { useState, useEffect } from 'react';
+import LandingPage from './components/LandingPage';
 import Dashboard from './components/Dashboard';
-import './App.css';
+import Login from './components/Login';
+import { ThemeProvider } from './contexts/ThemeContext';
+import './index.css';
+
+type View = 'landing' | 'login' | 'dashboard';
 
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [currentView, setCurrentView] = useState<View>('landing');
 
   useEffect(() => {
+    // Check if user is already logged in - persist session
     const tenantId = localStorage.getItem('tenant_id');
     if (tenantId) {
-      setIsAuthenticated(true);
+      setCurrentView('dashboard');
     }
   }, []);
 
+  const handleGetStarted = () => {
+    setCurrentView('login');
+  };
+
   const handleLoginSuccess = () => {
-    setIsAuthenticated(true);
+    setCurrentView('dashboard');
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('tenant_id');
+    localStorage.removeItem('tenant_name');
+    localStorage.removeItem('token');
+    localStorage.removeItem('api_key');
+    setCurrentView('landing');
   };
 
   return (
-    <div className="App">
-      {!isAuthenticated ? (
-        <Login onLoginSuccess={handleLoginSuccess} />
-      ) : (
-        <Dashboard />
+    <ThemeProvider>
+      {currentView === 'landing' && (
+        <LandingPage onGetStarted={handleGetStarted} />
       )}
-    </div>
+      {currentView === 'login' && (
+        <Login onLoginSuccess={handleLoginSuccess} />
+      )}
+      {currentView === 'dashboard' && (
+        <Dashboard onLogout={handleLogout} onGoHome={() => setCurrentView('landing')} />
+      )}
+    </ThemeProvider>
   );
 }
 
