@@ -6,6 +6,6 @@ scrape_configs:
     static_configs:
       - targets: ['localhost:9090']
 
-  - job_name: 'skyview-backend'
+  - job_name: 'obsera-backend'
     static_configs:
       - targets: ['backend:5000']

@@ -318,7 +318,7 @@ def get_logs():
     # Input validation
     if not sanitize_input(tenant_id, max_length=50):
         return jsonify({"error": "Invalid tenant_id format"}), 400
-    hours = int(request.args.get('hours', '1'))
+    hours = float(request.args.get('hours', '1'))
     
     if not tenant_id:
         return jsonify({"error": "tenant_id query parameter required"}), 400
@@ -393,7 +393,7 @@ def get_metrics():
     """Query metrics from Loki (stored as structured logs)"""
     tenant_id = request.args.get('tenant_id')
     metric_name = request.args.get('metric', '')
-    hours = int(request.args.get('hours', '1'))
+    hours = float(request.args.get('hours', '1'))
     
     if not tenant_id:
         return jsonify({"error": "tenant_id query parameter required"}), 400
@@ -471,7 +471,7 @@ def get_metrics_range():
     """Query time-series metrics from Prometheus"""
     tenant_id = request.args.get('tenant_id')
     metric = request.args.get('metric', 'http_requests_total')
-    hours = int(request.args.get('hours', '1'))
+    hours = float(request.args.get('hours', '1'))
     
     if not tenant_id:
         return jsonify({"error": "tenant_id query parameter required"}), 400

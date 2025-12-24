@@ -11,12 +11,12 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [theme, setTheme] = useState<Theme>(() => {
-        const stored = localStorage.getItem('skyview-theme');
+        const stored = localStorage.getItem('obsera-theme');
         return (stored as Theme) || 'dark';
     });
 
     useEffect(() => {
-        localStorage.setItem('skyview-theme', theme);
+        localStorage.setItem('obsera-theme', theme);
         document.documentElement.classList.remove('light', 'dark');
         document.documentElement.classList.add(theme);
     }, [theme]);

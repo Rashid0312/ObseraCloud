@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Continuous demo data generator for SkyView
+Continuous demo data generator for ObseraCloud
 Runs in background and sends logs, metrics, and traces continuously
 """
 
@@ -132,7 +132,7 @@ def send_trace():
 
 if __name__ == "__main__":
     print("=" * 60)
-    print("🚀 SkyView Continuous Data Generator")
+    print("🚀 ObseraCloud Continuous Data Generator")
     print("=" * 60)
     print(f"📡 Sending to: {LOKI_URL}")
     print("⏹️  Press Ctrl+C to stop\n")

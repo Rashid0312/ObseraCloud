@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Quick demo data generator for SkyView
+Quick demo data generator for ObseraCloud
 Sends logs and metrics to the observability stack
 """
 
@@ -167,7 +167,7 @@ def send_traces():
 
 if __name__ == "__main__":
     print("=" * 60)
-    print("🚀 SkyView Demo Data Generator")
+    print("🚀 ObseraCloud Demo Data Generator")
     print("=" * 60)
     
     print("\n📊 Generating Logs...")

@@ -1,5 +1,5 @@
 """
-SkyView Auth Gateway - OTLP Authentication Proxy
+ObseraCloud Auth Gateway - OTLP Authentication Proxy
 Validates API keys and injects tenant_id into telemetry data
 """
 
@@ -23,7 +23,7 @@ app = Flask(__name__)
 CORS(app)
 
 # Configuration
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://skyview_user:skyview_password@postgres:5432/skyview")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://obsera_user:obsera_password@postgres:5432/obsera")
 OTEL_COLLECTOR_URL = os.getenv("OTEL_COLLECTOR_URL", "http://otel-collector:4318")
 
 # Cache for API keys (simple in-memory, production should use Redis)
@@ -231,5 +231,5 @@ def metrics_proxy():
         return {'error': 'Failed to process metrics'}, 500
 
 if __name__ == '__main__':
-    logger.info("Starting SkyView Auth Gateway on port 4319")
+    logger.info("Starting ObseraCloud Auth Gateway on port 4319")
     app.run(host='0.0.0.0', port=4319, debug=False)

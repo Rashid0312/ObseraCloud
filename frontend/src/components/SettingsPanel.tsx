@@ -300,7 +300,7 @@ const SettingsPanel = ({ token, onApiKeyChange }: SettingsPanelProps) => {
                     <code>{profile?.api_key}</code>
                 </div>
                 <p className="settings-hint">
-                    Your API key is used to send telemetry data to SkyView. Regenerating it will invalidate the current key.
+                    Your API key is used to send telemetry data to ObseraCloud. Regenerating it will invalidate the current key.
                 </p>
                 <button
                     onClick={handleRegenerateApiKey}

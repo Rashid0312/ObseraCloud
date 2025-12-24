@@ -1,4 +1,4 @@
-# SkyView 🔭
+# ObseraCloud 🔭
 
 **Multi-Tenant Observability Platform**
 
@@ -44,8 +44,8 @@ A modern, cloud-native observability platform for logs, metrics, and traces with
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/SkyView.git
-cd SkyView
+git clone https://github.com/yourusername/ObseraCloud.git
+cd ObseraCloud
 
 # Start all services
 docker-compose up -d
@@ -86,7 +86,7 @@ open http://localhost:3001
 ## 📁 Project Structure
 
 ```
-SkyView/
+ObseraCloud/
 ├── frontend/                 # React + TypeScript UI
 │   ├── src/
 │   │   ├── components/       # UI components

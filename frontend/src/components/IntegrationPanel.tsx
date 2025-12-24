@@ -88,7 +88,7 @@ sdk.start();`;
         <div className="integration-panel">
             <div className="integration-header">
                 <h2><Key size={20} /> Integration Guide</h2>
-                <p>Connect your application to SkyView</p>
+                <p>Connect your application to ObseraCloud</p>
             </div>
 
             {/* API Key Section */}

@@ -1,4 +1,4 @@
-/* SkyView Logs Panel - Premium Silver Theme */
+/* ObseraCloud Logs Panel - Premium Silver Theme */
 .obs-logs-panel {
   display: flex;
   flex-direction: column;
@@ -12,6 +12,97 @@
 
 .obs-logs-compact {
   height: auto;
+}
+
+/* Stats Bar */
+.obs-logs-stats {
+  display: flex;
+  gap: 12px;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, hsl(220 15% 12%) 0%, hsl(220 12% 10%) 100%);
+  border-bottom: 1px solid hsl(220 12% 16%);
+}
+
+.obs-log-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 20px;
+  background: hsl(220 12% 14%);
+  border-radius: 8px;
+  border: 1px solid hsl(220 12% 18%);
+  min-width: 80px;
+}
+
+.obs-log-stat .obs-stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: hsl(220 10% 88%);
+  line-height: 1;
+}
+
+.obs-log-stat .obs-stat-label {
+  font-size: 0.7rem;
+  color: hsl(220 10% 50%);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 4px;
+}
+
+.obs-log-stat.error .obs-stat-value {
+  color: hsl(0 70% 60%);
+}
+
+.obs-log-stat.warn .obs-stat-value {
+  color: hsl(45 90% 55%);
+}
+
+.obs-log-stat.info .obs-stat-value {
+  color: hsl(210 80% 60%);
+}
+
+/* Time Selector */
+.obs-time-selector {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: hsl(220 15% 14%);
+  border: 1px solid hsl(220 12% 20%);
+  border-radius: 6px;
+}
+
+.obs-time-icon {
+  color: hsl(220 10% 50%);
+}
+
+.obs-time-select {
+  border: none !important;
+  background: transparent !important;
+  padding: 0 !important;
+  color: hsl(220 10% 85%);
+}
+
+/* Empty State */
+.obs-logs-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  color: hsl(220 10% 50%);
+  text-align: center;
+}
+
+.obs-logs-empty p {
+  font-size: 1rem;
+  margin-bottom: 8px;
+  color: hsl(220 10% 65%);
+}
+
+.obs-logs-empty span {
+  font-size: 0.85rem;
+  color: hsl(220 10% 45%);
 }
 
 .obs-logs-toolbar {

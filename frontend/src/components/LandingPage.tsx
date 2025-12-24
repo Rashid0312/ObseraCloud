@@ -22,7 +22,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
                     <div className="landing-logo-container">
                         <Activity className="landing-logo-icon" />
                     </div>
-                    <span className="landing-logo-text">SkyView</span>
+                    <span className="landing-logo-text">ObseraCloud</span>
                 </div>
                 <nav className="landing-nav">
                     <a href="#features" className="landing-nav-link">Features</a>
@@ -48,7 +48,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
                         <span className="landing-title-highlight">Miss Nothing.</span>
                     </h1>
                     <p className="landing-subtitle">
-                        SkyView is a multi-tenant observability platform that gives you complete visibility
+                        ObseraCloud is a multi-tenant observability platform that gives you complete visibility
                         into your applications with real-time logs, metrics, and distributed traces.
                     </p>
                     <div className="landing-cta-group">
@@ -172,9 +172,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
                 <div className="landing-footer-content">
                     <div className="landing-footer-brand">
                         <Activity className="landing-footer-logo" />
-                        <span>SkyView</span>
+                        <span>ObseraCloud</span>
                     </div>
-                    <p>&copy; 2024 SkyView. Built for developers, by developers.</p>
+                    <p>&copy; 2024 ObseraCloud. Built for developers, by developers.</p>
                 </div>
             </footer>
         </div>

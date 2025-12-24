@@ -1,4 +1,4 @@
-# SkyView Production Docker Compose
+# ObseraCloud Production Docker Compose
 # Reads secrets from .env file - copy .env.example to .env and configure
 
 services:
@@ -7,10 +7,10 @@ services:
   # ===========================================
   postgres:
     image: postgres:15-alpine
-    container_name: skyview-postgres
+    container_name: obsera-postgres
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-skyview}
-      POSTGRES_USER: ${POSTGRES_USER:-skyview_user}
+      POSTGRES_DB: ${POSTGRES_DB:-obsera}
+      POSTGRES_USER: ${POSTGRES_USER:-obsera_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
     # Port NOT exposed externally for security - only accessible within docker network
     # Uncomment for local development if needed:
@@ -20,9 +20,9 @@ services:
       - postgres-data:/var/lib/postgresql/data
       - ./backend/database.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
-      - skyview-net
+      - obsera-net
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-skyview_user}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-obsera_user}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -35,12 +35,12 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: skyview-backend
+    container_name: obsera-backend
     ports:
       - "5001:5000"
     environment:
       - FLASK_ENV=${FLASK_ENV:-production}
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-skyview_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-skyview}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-obsera_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-obsera}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:?JWT_SECRET_KEY is required}
       - PROMETHEUS_URL=${PROMETHEUS_URL:-http://prometheus:9090}
       - LOKI_URL=${LOKI_URL:-http://loki:3100}
@@ -49,7 +49,7 @@ services:
       postgres:
         condition: service_healthy
     networks:
-      - skyview-net
+      - obsera-net
     restart: unless-stopped
 
   # ===========================================
@@ -61,13 +61,13 @@ services:
       dockerfile: Dockerfile
       args:
         - VITE_API_BASE_URL=${VITE_API_BASE_URL:-http://localhost:5001}
-    container_name: skyview-frontend
+    container_name: obsera-frontend
     ports:
       - "3001:80"
     depends_on:
       - backend
     networks:
-      - skyview-net
+      - obsera-net
     restart: unless-stopped
 
   # ===========================================
@@ -75,7 +75,7 @@ services:
   # ===========================================
   nginx:
     image: nginx:alpine
-    container_name: skyview-nginx
+    container_name: obsera-nginx
     ports:
       - "80:80"
       - "443:443"
@@ -87,7 +87,7 @@ services:
       - frontend
       - backend
     networks:
-      - skyview-net
+      - obsera-net
     restart: unless-stopped
     profiles:
       - production
@@ -97,7 +97,7 @@ services:
   # ===========================================
   prometheus:
     image: prom/prometheus:latest
-    container_name: skyview-prometheus
+    container_name: obsera-prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
@@ -107,12 +107,12 @@ services:
       - ./backend/prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus-data:/prometheus
     networks:
-      - skyview-net
+      - obsera-net
     restart: unless-stopped
 
   loki:
     image: grafana/loki:latest
-    container_name: skyview-loki
+    container_name: obsera-loki
     command: -config.file=/etc/loki/loki-config.yaml
     ports:
       - "3100:3100"
@@ -120,12 +120,13 @@ services:
       - ./backend/loki-config.yaml:/etc/loki/loki-config.yaml
       - loki-data:/loki
     networks:
-      - skyview-net
+      - obsera-net
     restart: unless-stopped
 
   tempo:
     image: grafana/tempo:latest
-    container_name: skyview-tempo
+    container_name: obsera-tempo
+    user: root
     command: [ "-config.file=/etc/tempo/tempo-config.yaml" ]
     ports:
       - "3200:3200"
@@ -133,7 +134,7 @@ services:
       - ./tempo/tempo-config.yaml:/etc/tempo/tempo-config.yaml
       - tempo-data:/tmp/tempo
     networks:
-      - skyview-net
+      - obsera-net
     restart: unless-stopped
 
   # ===========================================
@@ -143,11 +144,11 @@ services:
     build:
       context: ./gateway
       dockerfile: Dockerfile
-    container_name: skyview-auth-gateway
+    container_name: obsera-auth-gateway
     ports:
       - "4319:4319"
     environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-skyview_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-skyview}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-obsera_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-obsera}
       - OTEL_COLLECTOR_URL=http://otel-collector:4318
     depends_on:
       postgres:
@@ -155,7 +156,7 @@ services:
       otel-collector:
         condition: service_started
     networks:
-      - skyview-net
+      - obsera-net
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:4319/health"]
       interval: 30s
@@ -165,7 +166,7 @@ services:
 
   otel-collector:
     image: otel/opentelemetry-collector-contrib:latest
-    container_name: skyview-otel-collector
+    container_name: obsera-otel-collector
     command: ["--config=/etc/otel-collector-config.yaml"]
     volumes:
       - ./otel-collector/otel-config.yaml:/etc/otel-collector-config.yaml
@@ -177,7 +178,7 @@ services:
       - tempo
       - loki
     networks:
-      - skyview-net
+      - obsera-net
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:13133/"]
       interval: 30s
@@ -186,7 +187,7 @@ services:
     restart: unless-stopped
 
 networks:
-  skyview-net:
+  obsera-net:
     driver: bridge
 
 volumes:

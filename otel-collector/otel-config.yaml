@@ -19,7 +19,7 @@ processors:
   resource:
     attributes:
       - key: collector.name
-        value: skyview-collector
+        value: obsera-collector
         action: upsert
 
 exporters:

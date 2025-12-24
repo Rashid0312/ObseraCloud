@@ -118,12 +118,12 @@ def generate_distributed_trace(tenant_id="acme"):
         "resourceSpans": [{
             "resource": {
                 "attributes": [
-                    {"key": "service.name", "value": {"stringValue": "skyview-demo"}},
+                    {"key": "service.name", "value": {"stringValue": "obsera-demo"}},
                     {"key": "tenant_id", "value": {"stringValue": tenant_id}}
                 ]
             },
             "scopeSpans": [{
-                "scope": {"name": "skyview-tracer"},
+                "scope": {"name": "obsera-tracer"},
                 "spans": spans
             }]
         }]
