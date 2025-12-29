@@ -153,18 +153,6 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
             {loading ? 'Loading...' : (isSignup ? 'Create Account' : 'Login')}
           </button>
         </form>
-
-        {/* Demo Accounts */}
-        {!isSignup && (
-          <div className="auth-demo">
-            <p>Demo Accounts</p>
-            <ul>
-              <li>admin@acme.com (password: demo123)</li>
-              <li>admin@globex.com (password: demo123)</li>
-              <li>admin@initech.com (password: demo123)</li>
-            </ul>
-          </div>
-        )}
       </div>
     </div>
   );
