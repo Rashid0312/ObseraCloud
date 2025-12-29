@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 CORS(app, resources={
     r"/api/*": {
-        "origins": ["http://localhost:5173", "http://localhost:3000", "http://localhost:3001"],
+        "origins": "*",  # Allow all origins for production
         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         "allow_headers": ["Content-Type", "Authorization", "X-API-Key"]
     }
@@ -419,7 +419,7 @@ def get_metrics():
             f"{LOKI_URL}/loki/api/v1/query_range",
             params={
                 "query": logql_query,
-                "limit": 100,
+                "limit": 1000,  # Increased for more chart data points
                 "start": int(start_time.timestamp() * 1e9),
                 "end": int(end_time.timestamp() * 1e9)
             },

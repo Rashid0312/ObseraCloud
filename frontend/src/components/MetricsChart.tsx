@@ -66,9 +66,9 @@ const MetricsChart: React.FC<MetricsChartProps> = ({ tenantId, refreshKey }) => 
   const [uptimeData, setUptimeData] = useState<UptimeData | null>(null);
 
   // Chart navigation state
-  const [timeBucket, setTimeBucket] = useState<number>(1); // 1, 5, or 15 minutes
+  const [timeBucket, setTimeBucket] = useState<number>(60); // Default to 60 minutes (1 hour)
   const [chartPage, setChartPage] = useState<number>(0); // 0 = latest, 1 = previous page, etc.
-  const POINTS_PER_PAGE = 10;
+  const POINTS_PER_PAGE = 60; // Show up to 60 data points (1 per minute)
 
   useEffect(() => {
     if (!tenantId) return;
@@ -206,7 +206,7 @@ const MetricsChart: React.FC<MetricsChartProps> = ({ tenantId, refreshKey }) => 
     const now = new Date();
     const cutoffTime = new Date(now.getTime() - timeBucket * 60 * 1000);
 
-    // Create time key at 1-minute granularity
+    // Create time key at 1-minute intervals for detailed view
     const getTimeKey = (date: Date) => {
       const hours = date.getHours().toString().padStart(2, '0');
       const minutes = date.getMinutes().toString().padStart(2, '0');
@@ -546,9 +546,10 @@ const MetricsChart: React.FC<MetricsChartProps> = ({ tenantId, refreshKey }) => 
               }}
               className="obs-bucket-select"
             >
-              <option value={1}>Last 1 min</option>
               <option value={5}>Last 5 min</option>
               <option value={15}>Last 15 min</option>
+              <option value={30}>Last 30 min</option>
+              <option value={60}>Last 1 hour</option>
             </select>
           </div>
           <div className="obs-chart-nav">
@@ -580,28 +581,45 @@ const MetricsChart: React.FC<MetricsChartProps> = ({ tenantId, refreshKey }) => 
             <h4>Requests</h4>
             <span className="obs-chart-subtitle">{combinedChartData.length} data points</span>
           </div>
-          <ResponsiveContainer width="100%" height={180}>
-            <AreaChart data={combinedChartData}>
-              <defs>
-                <linearGradient id="requestsGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="hsl(210, 80%, 55%)" stopOpacity={0.4} />
-                  <stop offset="95%" stopColor="hsl(210, 80%, 55%)" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 12%, 18%)" vertical={false} />
-              <XAxis dataKey="time" stroke="hsl(220, 10%, 40%)" fontSize={10} tickLine={false} />
-              <YAxis stroke="hsl(220, 10%, 40%)" fontSize={10} tickLine={false} axisLine={false} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: 'hsl(220, 12%, 12%)',
-                  border: '1px solid hsl(220, 12%, 20%)',
-                  borderRadius: '8px',
-                }}
-                formatter={(value: number) => [`${value} requests`, 'Requests']}
-              />
-              <Area type="monotone" dataKey="requests" stroke="hsl(210, 80%, 55%)" fill="url(#requestsGradient)" name="Requests" strokeWidth={2} />
-            </AreaChart>
-          </ResponsiveContainer>
+          {combinedChartData.length === 0 ? (
+            <div className="obs-chart-empty">
+              <span>📊</span>
+              <p>No request data in selected window</p>
+              <small>Try selecting a larger time window</small>
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={200}>
+              <AreaChart data={combinedChartData}>
+                <defs>
+                  <linearGradient id="requestsGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="hsl(210, 100%, 60%)" stopOpacity={0.5} />
+                    <stop offset="100%" stopColor="hsl(210, 100%, 45%)" stopOpacity={0.05} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 12%, 20%)" vertical={false} />
+                <XAxis dataKey="time" stroke="hsl(220, 10%, 45%)" fontSize={11} tickLine={false} />
+                <YAxis stroke="hsl(220, 10%, 45%)" fontSize={11} tickLine={false} axisLine={false} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'hsl(220, 15%, 10%)',
+                    border: '1px solid hsl(210, 80%, 50%)',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+                  }}
+                  formatter={(value: number) => [`${value} requests`, 'Requests']}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="requests"
+                  stroke="hsl(210, 100%, 60%)"
+                  fill="url(#requestsGradient)"
+                  strokeWidth={3}
+                  dot={{ fill: 'hsl(210, 100%, 60%)', strokeWidth: 2, r: 3 }}
+                  activeDot={{ r: 6, stroke: 'hsl(210, 100%, 70%)', strokeWidth: 2 }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
         </div>
 
         {/* Errors Chart */}
@@ -610,22 +628,42 @@ const MetricsChart: React.FC<MetricsChartProps> = ({ tenantId, refreshKey }) => 
             <h4>Errors</h4>
             <span className="obs-chart-subtitle error">{Math.round(totalErrors)} total errors</span>
           </div>
-          <ResponsiveContainer width="100%" height={180}>
-            <BarChart data={combinedChartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 12%, 18%)" vertical={false} />
-              <XAxis dataKey="time" stroke="hsl(220, 10%, 40%)" fontSize={10} tickLine={false} />
-              <YAxis stroke="hsl(220, 10%, 40%)" fontSize={10} tickLine={false} axisLine={false} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: 'hsl(220, 12%, 12%)',
-                  border: '1px solid hsl(220, 12%, 20%)',
-                  borderRadius: '8px',
-                }}
-                formatter={(value: number) => [`${value} errors`, 'Errors']}
-              />
-              <Bar dataKey="errors" fill="hsl(0, 70%, 55%)" name="Errors" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          {combinedChartData.length === 0 ? (
+            <div className="obs-chart-empty">
+              <span>✅</span>
+              <p>No errors in selected window</p>
+              <small>Your services are running smoothly!</small>
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={combinedChartData}>
+                <defs>
+                  <linearGradient id="errorsGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="hsl(0, 85%, 60%)" stopOpacity={1} />
+                    <stop offset="100%" stopColor="hsl(0, 70%, 40%)" stopOpacity={0.8} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 12%, 20%)" vertical={false} />
+                <XAxis dataKey="time" stroke="hsl(220, 10%, 45%)" fontSize={11} tickLine={false} />
+                <YAxis stroke="hsl(220, 10%, 45%)" fontSize={11} tickLine={false} axisLine={false} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'hsl(220, 15%, 10%)',
+                    border: '1px solid hsl(0, 70%, 50%)',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+                  }}
+                  formatter={(value: number) => [`${value} errors`, 'Errors']}
+                />
+                <Bar
+                  dataKey="errors"
+                  fill="url(#errorsGradient)"
+                  name="Errors"
+                  radius={[6, 6, 0, 0]}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </div>
       </div>
     </div>

@@ -556,6 +556,34 @@
   color: hsl(0 70% 55%);
 }
 
+/* Empty Chart State */
+.obs-chart-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: hsl(220 10% 50%);
+  text-align: center;
+  gap: 8px;
+}
+
+.obs-chart-empty span {
+  font-size: 2.5rem;
+  opacity: 0.5;
+}
+
+.obs-chart-empty p {
+  margin: 0;
+  font-size: 0.95rem;
+  color: hsl(220 10% 60%);
+}
+
+.obs-chart-empty small {
+  font-size: 0.75rem;
+  color: hsl(220 10% 40%);
+}
+
 /* Responsive */
 @media (max-width: 900px) {
   .obs-metrics-charts {
