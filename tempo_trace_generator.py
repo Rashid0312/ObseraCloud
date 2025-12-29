@@ -10,7 +10,7 @@ import uuid
 import struct
 import json
 
-TEMPO_OTLP_URL = "http://localhost:4318"
+TEMPO_OTLP_URL = "http://localhost:4320"  # Tempo OTLP HTTP endpoint (bypasses OTel collector)
 
 def generate_trace_id():
     """Generate a 16-byte trace ID as 32+hex string"""
