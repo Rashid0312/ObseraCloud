@@ -1,7 +1,8 @@
 import React, { useEffect, useState, type ChangeEvent } from 'react';
 import { API_BASE_URL } from '../config';
-import { Search, AlertCircle, ChevronDown, Clock } from 'lucide-react';
+import { Search, AlertCircle, ChevronDown, Clock, Bot } from 'lucide-react';
 import './LogsPanel.css';
+import LogDetailModal from './LogDetailModal';
 
 interface Log {
   timestamp: string;
@@ -34,6 +35,7 @@ const LogsPanel: React.FC<LogsPanelProps> = ({ tenantId, refreshKey, compact }) 
   const [search, setSearch] = useState<string>('');
   const [expandedLog, setExpandedLog] = useState<number | null>(null);
   const [timeRange, setTimeRange] = useState<string>('1'); // Default 1 hour
+  const [selectedLog, setSelectedLog] = useState<Log | null>(null); // For AI debug modal
 
   useEffect(() => {
     if (!tenantId) return;
@@ -106,164 +108,188 @@ const LogsPanel: React.FC<LogsPanelProps> = ({ tenantId, refreshKey, compact }) 
   }
 
   return (
-    <div className={`obs-logs-panel ${compact ? 'obs-logs-compact' : ''}`}>
-      {!compact && (
-        <>
-          {/* Stats Bar */}
-          <div className="obs-logs-stats">
-            <div className="obs-log-stat">
-              <span className="obs-stat-value">{logs.length}</span>
-              <span className="obs-stat-label">Total</span>
-            </div>
-            <div className="obs-log-stat error">
-              <span className="obs-stat-value">{errorCount}</span>
-              <span className="obs-stat-label">Errors</span>
-            </div>
-            <div className="obs-log-stat warn">
-              <span className="obs-stat-value">{warnCount}</span>
-              <span className="obs-stat-label">Warnings</span>
-            </div>
-            <div className="obs-log-stat info">
-              <span className="obs-stat-value">{infoCount}</span>
-              <span className="obs-stat-label">Info</span>
-            </div>
-          </div>
-
-          {/* Toolbar */}
-          <div className="obs-logs-toolbar">
-            <div className="obs-logs-search">
-              <Search className="obs-search-icon" />
-              <input
-                type="text"
-                placeholder="Search logs..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
-            <div className="obs-logs-filters">
-              {/* Time Range Selector */}
-              <div className="obs-time-selector">
-                <Clock size={14} className="obs-time-icon" />
-                <select
-                  value={timeRange}
-                  onChange={(e: ChangeEvent<HTMLSelectElement>) => setTimeRange(e.target.value)}
-                  className="obs-filter-select obs-time-select"
-                >
-                  {TIME_RANGES.map(range => (
-                    <option key={range.value} value={range.value}>{range.label}</option>
-                  ))}
-                </select>
+    <>
+      <div className={`obs-logs-panel ${compact ? 'obs-logs-compact' : ''}`}>
+        {!compact && (
+          <>
+            {/* Stats Bar */}
+            <div className="obs-logs-stats">
+              <div className="obs-log-stat">
+                <span className="obs-stat-value">{logs.length}</span>
+                <span className="obs-stat-label">Total</span>
               </div>
-
-              {/* Level Filter */}
-              <select
-                value={filter}
-                onChange={(e: ChangeEvent<HTMLSelectElement>) => setFilter(e.target.value)}
-                className="obs-filter-select"
-              >
-                <option value="">All levels</option>
-                <option value="INFO">INFO</option>
-                <option value="WARN">WARN</option>
-                <option value="ERROR">ERROR</option>
-              </select>
-              <span className="obs-logs-count">{filteredLogs.length} logs</span>
-            </div>
-          </div>
-        </>
-      )}
-
-      <div className="obs-logs-list">
-        {filteredLogs.length === 0 ? (
-          <div className="obs-logs-empty">
-            <p>No logs found for the selected time range</p>
-            <span>Try selecting a longer time range or check if data is being generated</span>
-          </div>
-        ) : (
-          filteredLogs.map((log, index) => (
-            <div
-              key={index}
-              className={`obs-log-entry ${expandedLog === index ? 'expanded' : ''}`}
-            >
-              <div
-                className="obs-log-main"
-                onClick={() => setExpandedLog(expandedLog === index ? null : index)}
-              >
-                <span className="obs-log-time">
-                  {new Date(log.timestamp).toLocaleTimeString('en-US', {
-                    hour12: false,
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit',
-                  })}
-                </span>
-                <span className={`obs-log-level ${getLevelClass(log.level)}`}>
-                  {log.level.toUpperCase()}
-                </span>
-                <span className="obs-log-service">
-                  {log.service}
-                </span>
-                <span className="obs-log-message">
-                  {log.message}
-                </span>
-                <ChevronDown className={`obs-log-expand-icon ${expandedLog === index ? 'rotated' : ''}`} />
+              <div className="obs-log-stat error">
+                <span className="obs-stat-value">{errorCount}</span>
+                <span className="obs-stat-label">Errors</span>
               </div>
+              <div className="obs-log-stat warn">
+                <span className="obs-stat-value">{warnCount}</span>
+                <span className="obs-stat-label">Warnings</span>
+              </div>
+              <div className="obs-log-stat info">
+                <span className="obs-stat-value">{infoCount}</span>
+                <span className="obs-stat-label">Info</span>
+              </div>
+            </div>
 
-              {expandedLog === index && log.labels && (
-                <div className="obs-log-details">
-                  <div className="obs-log-details-section">
-                    <h4>Metadata</h4>
-                    <div className="obs-log-metadata">
-                      <div className="obs-metadata-item">
-                        <span className="obs-metadata-key">Timestamp:</span>
-                        <span className="obs-metadata-value">{log.timestamp}</span>
-                      </div>
-                      {Object.entries(log.labels).map(([key, value]) => (
-                        <div key={key} className="obs-metadata-item">
-                          <span className="obs-metadata-key">{key}:</span>
-                          <span className="obs-metadata-value">{value}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {(log.level.toLowerCase() === 'error' || log.level.toLowerCase() === 'warn') && (
-                    <div className="obs-log-details-section">
-                      <h4>🔍 Debug Guide</h4>
-                      <div className="obs-debug-info">
-                        <div className="obs-debug-section">
-                          <strong>📍 Where to Look:</strong>
-                          <ul>
-                            <li>
-                              <strong>Service:</strong> <code>{log.service || 'N/A'}</code>
-                              {log.labels?.endpoint && (
-                                <> → <code>{log.labels.endpoint}</code></>
-                              )}
-                            </li>
-                            {log.labels?.method && (
-                              <li><strong>HTTP Method:</strong> <code>{log.labels.method}</code></li>
-                            )}
-                            {log.labels?.status && (
-                              <li>
-                                <strong>Status Code:</strong>{' '}
-                                <code className={parseInt(log.labels.status) >= 500 ? 'status-error' : 'status-warn'}>
-                                  {log.labels.status}
-                                </code>
-                                {parseInt(log.labels.status) >= 500 && <span className="hint"> (Server Error - Check backend logs)</span>}
-                                {parseInt(log.labels.status) >= 400 && parseInt(log.labels.status) < 500 && <span className="hint"> (Client Error - Check request params)</span>}
-                              </li>
-                            )}
-                          </ul>
-                        </div>
-                      </div>
-                    </div>
-                  )}
+            {/* Toolbar */}
+            <div className="obs-logs-toolbar">
+              <div className="obs-logs-search">
+                <Search className="obs-search-icon" />
+                <input
+                  type="text"
+                  placeholder="Search logs..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+              <div className="obs-logs-filters">
+                {/* Time Range Selector */}
+                <div className="obs-time-selector">
+                  <Clock size={14} className="obs-time-icon" />
+                  <select
+                    value={timeRange}
+                    onChange={(e: ChangeEvent<HTMLSelectElement>) => setTimeRange(e.target.value)}
+                    className="obs-filter-select obs-time-select"
+                  >
+                    {TIME_RANGES.map(range => (
+                      <option key={range.value} value={range.value}>{range.label}</option>
+                    ))}
+                  </select>
                 </div>
-              )}
+
+                {/* Level Filter */}
+                <select
+                  value={filter}
+                  onChange={(e: ChangeEvent<HTMLSelectElement>) => setFilter(e.target.value)}
+                  className="obs-filter-select"
+                >
+                  <option value="">All levels</option>
+                  <option value="INFO">INFO</option>
+                  <option value="WARN">WARN</option>
+                  <option value="ERROR">ERROR</option>
+                </select>
+                <span className="obs-logs-count">{filteredLogs.length} logs</span>
+              </div>
             </div>
-          ))
+          </>
         )}
+
+        <div className="obs-logs-list">
+          {filteredLogs.length === 0 ? (
+            <div className="obs-logs-empty">
+              <p>No logs found for the selected time range</p>
+              <span>Try selecting a longer time range or check if data is being generated</span>
+            </div>
+          ) : (
+            filteredLogs.map((log, index) => (
+              <div
+                key={index}
+                className={`obs-log-entry ${expandedLog === index ? 'expanded' : ''}`}
+              >
+                <div
+                  className="obs-log-main"
+                  onClick={() => setExpandedLog(expandedLog === index ? null : index)}
+                >
+                  <span className="obs-log-time">
+                    {new Date(log.timestamp).toLocaleTimeString('en-US', {
+                      hour12: false,
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      second: '2-digit',
+                    })}
+                  </span>
+                  <span className={`obs-log-level ${getLevelClass(log.level)}`}>
+                    {log.level.toUpperCase()}
+                  </span>
+                  {log.level.toUpperCase() === 'ERROR' && (
+                    <button
+                      className="ai-debug-btn-inline"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedLog(log);
+                      }}
+                      title="Debug with AI"
+                    >
+                      <Bot size={14} />
+                    </button>
+                  )}
+                  <span className="obs-log-service">
+                    {log.service}
+                  </span>
+                  <span className="obs-log-message">
+                    {log.message}
+                  </span>
+                  <ChevronDown className={`obs-log-expand-icon ${expandedLog === index ? 'rotated' : ''}`} />
+                </div>
+
+                {expandedLog === index && log.labels && (
+                  <div className="obs-log-details">
+                    <div className="obs-log-details-section">
+                      <h4>Metadata</h4>
+                      <div className="obs-log-metadata">
+                        <div className="obs-metadata-item">
+                          <span className="obs-metadata-key">Timestamp:</span>
+                          <span className="obs-metadata-value">{log.timestamp}</span>
+                        </div>
+                        {Object.entries(log.labels).map(([key, value]) => (
+                          <div key={key} className="obs-metadata-item">
+                            <span className="obs-metadata-key">{key}:</span>
+                            <span className="obs-metadata-value">{value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {(log.level.toLowerCase() === 'error' || log.level.toLowerCase() === 'warn') && (
+                      <div className="obs-log-details-section">
+                        <h4>🔍 Debug Guide</h4>
+                        <div className="obs-debug-info">
+                          <div className="obs-debug-section">
+                            <strong>📍 Where to Look:</strong>
+                            <ul>
+                              <li>
+                                <strong>Service:</strong> <code>{log.service || 'N/A'}</code>
+                                {log.labels?.endpoint && (
+                                  <> → <code>{log.labels.endpoint}</code></>
+                                )}
+                              </li>
+                              {log.labels?.method && (
+                                <li><strong>HTTP Method:</strong> <code>{log.labels.method}</code></li>
+                              )}
+                              {log.labels?.status && (
+                                <li>
+                                  <strong>Status Code:</strong>{' '}
+                                  <code className={parseInt(log.labels.status) >= 500 ? 'status-error' : 'status-warn'}>
+                                    {log.labels.status}
+                                  </code>
+                                  {parseInt(log.labels.status) >= 500 && <span className="hint"> (Server Error - Check backend logs)</span>}
+                                  {parseInt(log.labels.status) >= 400 && parseInt(log.labels.status) < 500 && <span className="hint"> (Client Error - Check request params)</span>}
+                                </li>
+                              )}
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </div>
       </div>
-    </div>
+
+      {/* AI Debug Modal */}
+      {
+        selectedLog && (
+          <LogDetailModal
+            log={selectedLog}
+            tenantId={tenantId}
+            onClose={() => setSelectedLog(null)}
+          />
+        )}
+    </>
   );
 };
 

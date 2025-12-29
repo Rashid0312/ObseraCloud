@@ -1,0 +1,394 @@
+/* Log Detail Modal Styles */
+
+.log-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+}
+
+.log-modal-content {
+    background: var(--bg-card, #1e1e2e);
+    border-radius: 16px;
+    width: 100%;
+    max-width: 700px;
+    max-height: 85vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.log-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.log-modal-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.log-level-badge {
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.log-level-badge.error {
+    background: rgba(239, 68, 68, 0.2);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.log-level-badge.warn {
+    background: rgba(245, 158, 11, 0.2);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.log-level-badge.info {
+    background: rgba(59, 130, 246, 0.2);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.log-service {
+    color: var(--text-secondary, #a0a0b0);
+    font-size: 14px;
+}
+
+.log-modal-close {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    border-radius: 8px;
+    padding: 8px;
+    color: var(--text-secondary, #a0a0b0);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.log-modal-close:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+}
+
+.log-modal-body {
+    padding: 20px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.log-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+}
+
+.log-detail-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.log-detail-item svg {
+    color: var(--text-muted, #666);
+    flex-shrink: 0;
+}
+
+.log-detail-label {
+    color: var(--text-muted, #666);
+    font-size: 12px;
+    margin-right: 4px;
+}
+
+.log-detail-value {
+    color: var(--text-primary, #e0e0e0);
+    font-size: 13px;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.log-message-section h4 {
+    color: var(--text-secondary, #a0a0b0);
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+}
+
+.log-message-content {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    padding: 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text-primary, #e0e0e0);
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* AI Debug Section */
+.ai-debug-section {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%);
+    border-radius: 12px;
+    padding: 16px;
+    border: 1px solid rgba(139, 92, 246, 0.2);
+}
+
+.ai-debug-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #a78bfa;
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 12px;
+}
+
+.ai-debug-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 12px 20px;
+    background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+    border: none;
+    border-radius: 10px;
+    color: white;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.ai-debug-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4);
+}
+
+.ai-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 20px;
+    color: var(--text-secondary, #a0a0b0);
+}
+
+.ai-spinner {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.ai-error {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+    background: rgba(239, 68, 68, 0.1);
+    border-radius: 8px;
+    color: #f87171;
+    font-size: 13px;
+}
+
+.ai-error button {
+    margin-left: auto;
+    padding: 6px 12px;
+    background: rgba(239, 68, 68, 0.2);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 6px;
+    color: #f87171;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.ai-error button:hover {
+    background: rgba(239, 68, 68, 0.3);
+}
+
+.ai-response {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.ai-response-content {
+    padding: 16px;
+    color: var(--text-primary, #e0e0e0);
+    font-size: 14px;
+    line-height: 1.7;
+}
+
+.ai-response-content h3,
+.ai-response-content h4 {
+    color: #a78bfa;
+    margin: 16px 0 8px 0;
+    font-size: 15px;
+}
+
+.ai-response-content h3:first-child,
+.ai-response-content h4:first-child {
+    margin-top: 0;
+}
+
+.ai-response-content strong {
+    color: #c4b5fd;
+}
+
+.ai-response-content code {
+    background: rgba(139, 92, 246, 0.2);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: #e879f9;
+}
+
+.ai-response-content pre {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    padding: 12px;
+    margin: 12px 0;
+    overflow-x: auto;
+}
+
+.ai-response-content pre code {
+    background: none;
+    padding: 0;
+    color: #a5f3fc;
+}
+
+.ai-response-content p {
+    margin: 8px 0;
+}
+
+.ai-response-meta {
+    display: flex;
+    justify-content: flex-end;
+    gap: 16px;
+    padding: 10px 16px;
+    background: rgba(0, 0, 0, 0.2);
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    font-size: 11px;
+    color: var(--text-muted, #666);
+}
+/* Code Block Styles - ChatGPT-like */
+.code-block {
+    background: #0d0d0d;
+    border-radius: 8px;
+    margin: 12px 0;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.code-block-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: #2f2f2f;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.code-language {
+    font-size: 12px;
+    color: #a0a0b0;
+    font-family: 'JetBrains Mono', monospace;
+    text-transform: lowercase;
+}
+
+.copy-button {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    color: #a0a0b0;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.copy-button:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+.copy-button svg {
+    flex-shrink: 0;
+}
+
+.code-content {
+    background: #0d0d0d;
+    padding: 16px;
+    margin: 0;
+    overflow-x: auto;
+    font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    color: #e2e8f0;
+    white-space: pre;
+    tab-size: 2;
+}
+
+.code-content code {
+    background: none !important;
+    padding: 0 !important;
+    color: inherit !important;
+    font-size: inherit;
+}
+
+/* Inline code styling */
+.inline-code {
+    background: rgba(139, 92, 246, 0.2);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: #e879f9;
+}
+
+/* List number styling */
+.list-number {
+    color: #8b5cf6;
+    font-weight: 600;
+}

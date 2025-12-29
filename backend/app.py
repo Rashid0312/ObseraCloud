@@ -8,6 +8,7 @@ import os
 import re
 import jwt
 from datetime import datetime, timedelta, timezone
+import time
 import logging
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -15,6 +16,9 @@ import bcrypt
 import secrets
 from functools import wraps
 from contextlib import nullcontext
+
+# Trace cache for consistent results (Tempo returns non-deterministic results)
+_trace_cache = {}  # {tenant_id: {"traces": [...], "timestamp": time.time()}}
 
 # Configure logging
 logging.basicConfig(
@@ -441,8 +445,12 @@ def get_metrics():
                 else:
                     metric_value = message
                 
+                # Convert to UTC+1 (CET) for display - same as logs
+                utc_dt = datetime.fromtimestamp(timestamp_ns / 1e9, tz=timezone.utc)
+                local_dt = utc_dt + timedelta(hours=1)  # UTC+1
+                
                 metrics.append({
-                    "timestamp": datetime.fromtimestamp(timestamp_ns / 1e9).isoformat(),
+                    "timestamp": local_dt.strftime('%Y-%m-%dT%H:%M:%S'),
                     "metric_name": metric_name,
                     "value": metric_value,
                     "labels": stream_labels
@@ -520,12 +528,30 @@ def get_traces():
     """Query traces from Tempo with multi-tenant filtering"""
     tenant_id = request.args.get('tenant_id')
     limit = request.args.get('limit', '20')
+    hours = float(request.args.get('hours', '24'))
     
     if not tenant_id:
         return jsonify({"error": "tenant_id query parameter required"}), 400
     
     if not validate_tenant(tenant_id):
         return jsonify({"error": "Invalid or inactive tenant"}), 403
+    
+    # Check cache for consistent results (Tempo search is non-deterministic)
+    cache_key = f"{tenant_id}_{hours}"
+    cache_ttl = 30  # Cache for 30 seconds for consistent sorting
+    
+    if cache_key in _trace_cache:
+        cached = _trace_cache[cache_key]
+        if time.time() - cached["timestamp"] < cache_ttl:
+            # Return cached results (sliced to requested limit)
+            cached_traces = cached["traces"][:int(limit)]
+            logger.info(f"Returning {len(cached_traces)} cached traces for tenant: {tenant_id}")
+            return jsonify({
+                "tenant_id": tenant_id,
+                "traces": cached_traces,
+                "count": len(cached_traces),
+                "source": "tempo-cached"
+            }), 200
     
     try:
         # Query Tempo with TraceQL filtering by tenant_id for multi-tenancy isolation
@@ -536,8 +562,8 @@ def get_traces():
             f"{TEMPO_URL}/api/search",
             params={
                 "q": traceql_query,
-                "limit": limit,
-                "start": int((datetime.now() - timedelta(hours=24)).timestamp()),
+                "limit": 100,  # Fetch more traces than needed for consistent sorting
+                "start": int((datetime.now() - timedelta(hours=hours)).timestamp()),
                 "end": int(datetime.now().timestamp())
             },
             timeout=10
@@ -556,6 +582,19 @@ def get_traces():
                     "durationMs": trace.get('durationMs', 0),
                     "status": "OK"
                 })
+            
+            # Sort by timestamp - newest first
+            traces.sort(key=lambda x: int(x.get('startTimeUnixNano', 0)), reverse=True)
+            
+            # Save ALL sorted traces to cache BEFORE slicing
+            _trace_cache[cache_key] = {
+                "traces": traces,  # Store all 100 sorted traces
+                "timestamp": time.time()
+            }
+            
+            # Limit to requested amount AFTER sorting for consistent results
+            requested_limit = int(limit)
+            traces = traces[:requested_limit]
             
             logger.info(f"Retrieved {len(traces)} traces from Tempo for tenant: {tenant_id}")
             return jsonify({
@@ -765,6 +804,319 @@ def health():
         "services": services_status
     }), 200
 
+# ==================== UPTIME MONITORING ENDPOINTS ====================
+
+@app.route('/api/uptime', methods=['GET'])
+@limiter.limit("100 per minute")
+def get_uptime():
+    """Get real-time uptime percentage for a tenant"""
+    tenant_id = request.args.get('tenant_id')
+    hours = int(request.args.get('hours', '24'))
+    
+    if not tenant_id:
+        return jsonify({"error": "tenant_id query parameter required"}), 400
+    
+    if not validate_tenant(tenant_id):
+        return jsonify({"error": "Invalid or inactive tenant"}), 403
+    
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({"error": "Database unavailable"}), 503
+    
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            # Get overall uptime for tenant
+            cur.execute("""
+                SELECT 
+                    COUNT(*) as total_checks,
+                    SUM(CASE WHEN status = 'up' THEN 1 ELSE 0 END) as successful_checks,
+                    ROUND(SUM(CASE WHEN status = 'up' THEN 1 ELSE 0 END)::DECIMAL / NULLIF(COUNT(*), 0) * 100, 2) as uptime_percentage,
+                    AVG(response_time_ms)::INTEGER as avg_response_ms
+                FROM health_checks
+                WHERE tenant_id = %s
+                  AND checked_at > NOW() - INTERVAL '%s hours'
+            """, (tenant_id, hours))
+            result = cur.fetchone()
+            
+            # Get per-service breakdown
+            cur.execute("""
+                SELECT 
+                    service_name,
+                    COUNT(*) as total_checks,
+                    SUM(CASE WHEN status = 'up' THEN 1 ELSE 0 END) as successful_checks,
+                    ROUND(SUM(CASE WHEN status = 'up' THEN 1 ELSE 0 END)::DECIMAL / NULLIF(COUNT(*), 0) * 100, 2) as uptime_percentage,
+                    AVG(response_time_ms)::INTEGER as avg_response_ms
+                FROM health_checks
+                WHERE tenant_id = %s
+                  AND checked_at > NOW() - INTERVAL '%s hours'
+                GROUP BY service_name
+                ORDER BY uptime_percentage ASC
+            """, (tenant_id, hours))
+            services = cur.fetchall()
+            
+            # Get ongoing outages
+            cur.execute("""
+                SELECT service_name, started_at, failure_count
+                FROM outages
+                WHERE tenant_id = %s AND status = 'ongoing'
+            """, (tenant_id,))
+            ongoing_outages = cur.fetchall()
+            
+            return jsonify({
+                "tenant_id": tenant_id,
+                "period_hours": hours,
+                "uptime_percentage": float(result['uptime_percentage'] or 100),
+                "total_checks": result['total_checks'] or 0,
+                "successful_checks": result['successful_checks'] or 0,
+                "avg_response_ms": result['avg_response_ms'] or 0,
+                "services": [dict(s) for s in services],
+                "ongoing_outages": [dict(o) for o in ongoing_outages],
+                "status": "degraded" if ongoing_outages else "healthy"
+            }), 200
+            
+    except Exception as e:
+        logger.error(f"Failed to get uptime: {e}")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        conn.close()
+
+
+@app.route('/api/uptime/history', methods=['GET'])
+@limiter.limit("60 per minute")
+def get_uptime_history():
+    """Get daily uptime history for a tenant"""
+    tenant_id = request.args.get('tenant_id')
+    days = int(request.args.get('days', '30'))
+    
+    if not tenant_id:
+        return jsonify({"error": "tenant_id query parameter required"}), 400
+    
+    if not validate_tenant(tenant_id):
+        return jsonify({"error": "Invalid or inactive tenant"}), 403
+    
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({"error": "Database unavailable"}), 503
+    
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("""
+                SELECT 
+                    DATE(checked_at) as date,
+                    COUNT(*) as total_checks,
+                    SUM(CASE WHEN status = 'up' THEN 1 ELSE 0 END) as successful_checks,
+                    ROUND(SUM(CASE WHEN status = 'up' THEN 1 ELSE 0 END)::DECIMAL / NULLIF(COUNT(*), 0) * 100, 2) as uptime_percentage,
+                    AVG(response_time_ms)::INTEGER as avg_response_ms
+                FROM health_checks
+                WHERE tenant_id = %s
+                  AND checked_at > NOW() - INTERVAL '%s days'
+                GROUP BY DATE(checked_at)
+                ORDER BY date DESC
+            """, (tenant_id, days))
+            history = cur.fetchall()
+            
+            return jsonify({
+                "tenant_id": tenant_id,
+                "period_days": days,
+                "history": [dict(h) for h in history]
+            }), 200
+            
+    except Exception as e:
+        logger.error(f"Failed to get uptime history: {e}")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        conn.close()
+
+
+@app.route('/api/endpoints', methods=['GET'])
+@limiter.limit("60 per minute")
+def get_endpoints():
+    """Get monitored endpoints for a tenant"""
+    tenant_id = request.args.get('tenant_id')
+    
+    if not tenant_id:
+        return jsonify({"error": "tenant_id query parameter required"}), 400
+    
+    if not validate_tenant(tenant_id):
+        return jsonify({"error": "Invalid or inactive tenant"}), 403
+    
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({"error": "Database unavailable"}), 503
+    
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("""
+                SELECT id, service_name, endpoint_url, check_interval_seconds, 
+                       timeout_seconds, is_active, created_at
+                FROM service_endpoints
+                WHERE tenant_id = %s
+                ORDER BY service_name
+            """, (tenant_id,))
+            endpoints = cur.fetchall()
+            
+            return jsonify({
+                "tenant_id": tenant_id,
+                "endpoints": [dict(e) for e in endpoints],
+                "count": len(endpoints)
+            }), 200
+            
+    except Exception as e:
+        logger.error(f"Failed to get endpoints: {e}")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        conn.close()
+
+
+@app.route('/api/endpoints', methods=['POST'])
+@limiter.limit("30 per minute")
+def create_endpoint():
+    """Add a new endpoint to monitor"""
+    data = request.get_json()
+    
+    tenant_id = data.get('tenant_id')
+    service_name = data.get('service_name')
+    endpoint_url = data.get('endpoint_url')
+    
+    if not all([tenant_id, service_name, endpoint_url]):
+        return jsonify({"error": "tenant_id, service_name, and endpoint_url are required"}), 400
+    
+    if not validate_tenant(tenant_id):
+        return jsonify({"error": "Invalid or inactive tenant"}), 403
+    
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({"error": "Database unavailable"}), 503
+    
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("""
+                INSERT INTO service_endpoints 
+                    (tenant_id, service_name, endpoint_url, check_interval_seconds, timeout_seconds)
+                VALUES (%s, %s, %s, %s, %s)
+                ON CONFLICT (tenant_id, service_name) 
+                DO UPDATE SET endpoint_url = EXCLUDED.endpoint_url, updated_at = NOW()
+                RETURNING id, service_name, endpoint_url, is_active
+            """, (
+                tenant_id,
+                service_name,
+                endpoint_url,
+                data.get('check_interval_seconds', 60),
+                data.get('timeout_seconds', 10)
+            ))
+            endpoint = cur.fetchone()
+            conn.commit()
+            
+            logger.info(f"Endpoint created/updated: {tenant_id}/{service_name}")
+            return jsonify({
+                "message": "Endpoint created successfully",
+                "endpoint": dict(endpoint)
+            }), 201
+            
+    except Exception as e:
+        logger.error(f"Failed to create endpoint: {e}")
+        conn.rollback()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        conn.close()
+
+
+@app.route('/api/endpoints/<int:endpoint_id>', methods=['DELETE'])
+@limiter.limit("30 per minute")
+def delete_endpoint(endpoint_id):
+    """Delete a monitored endpoint"""
+    tenant_id = request.args.get('tenant_id')
+    
+    if not tenant_id:
+        return jsonify({"error": "tenant_id query parameter required"}), 400
+    
+    if not validate_tenant(tenant_id):
+        return jsonify({"error": "Invalid or inactive tenant"}), 403
+    
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({"error": "Database unavailable"}), 503
+    
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                DELETE FROM service_endpoints 
+                WHERE id = %s AND tenant_id = %s
+                RETURNING id
+            """, (endpoint_id, tenant_id))
+            deleted = cur.fetchone()
+            conn.commit()
+            
+            if deleted:
+                return jsonify({"message": "Endpoint deleted"}), 200
+            else:
+                return jsonify({"error": "Endpoint not found"}), 404
+            
+    except Exception as e:
+        logger.error(f"Failed to delete endpoint: {e}")
+        conn.rollback()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        conn.close()
+
+
+@app.route('/api/outages', methods=['GET'])
+@limiter.limit("60 per minute")
+def get_outages():
+    """Get outage history for a tenant"""
+    tenant_id = request.args.get('tenant_id')
+    days = int(request.args.get('days', '30'))
+    status_filter = request.args.get('status')  # 'ongoing', 'resolved', or None for all
+    
+    if not tenant_id:
+        return jsonify({"error": "tenant_id query parameter required"}), 400
+    
+    if not validate_tenant(tenant_id):
+        return jsonify({"error": "Invalid or inactive tenant"}), 403
+    
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({"error": "Database unavailable"}), 503
+    
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            query = """
+                SELECT id, service_name, started_at, ended_at, 
+                       duration_seconds, failure_count, status, root_cause
+                FROM outages
+                WHERE tenant_id = %s
+                  AND started_at > NOW() - INTERVAL '%s days'
+            """
+            params = [tenant_id, days]
+            
+            if status_filter in ['ongoing', 'resolved']:
+                query += " AND status = %s"
+                params.append(status_filter)
+            
+            query += " ORDER BY started_at DESC"
+            
+            cur.execute(query, params)
+            outages = cur.fetchall()
+            
+            # Calculate total downtime
+            total_downtime = sum(o['duration_seconds'] or 0 for o in outages if o['status'] == 'resolved')
+            
+            return jsonify({
+                "tenant_id": tenant_id,
+                "period_days": days,
+                "outages": [dict(o) for o in outages],
+                "total_outages": len(outages),
+                "ongoing_count": sum(1 for o in outages if o['status'] == 'ongoing'),
+                "total_downtime_seconds": total_downtime
+            }), 200
+            
+    except Exception as e:
+        logger.error(f"Failed to get outages: {e}")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        conn.close()
+
+
 @app.route('/', methods=['GET'])
 def root():
     """Root endpoint with API documentation"""
@@ -784,7 +1136,7 @@ def root():
                 "range": "GET /api/metrics/range?tenant_id=<id>&metric=<name>&hours=<n>"
             },
             "traces": {
-                "query": "GET /api/traces?tenant_id=<id>&limit=<n>",
+                "query": "GET /api/traces?tenant_id=<id>&limit=<n>&hours=<n>",
                 "search": "GET /api/traces/search?tenant_id=<id>&trace_id=<id>&service=<name>"
             },
             "health": "GET /health"
@@ -1137,6 +1489,60 @@ def not_found(error):
 def internal_error(error):
     logger.error(f"Internal server error: {str(error)}")
     return jsonify({"error": "Internal server error"}), 500
+
+# ==================== AI DEBUG ====================
+
+from ai_debug import analyze_error_log
+
+@app.route('/api/ai/debug', methods=['POST'])
+@limiter.limit("30 per minute")
+def ai_debug_log():
+    """Analyze an error log using AI (Gemini)"""
+    data = request.get_json()
+    
+    if not data:
+        return jsonify({"error": "Request body required"}), 400
+    
+    tenant_id = data.get('tenant_id')
+    log_message = data.get('log_message')
+    log_level = data.get('log_level', 'error')
+    service_name = data.get('service_name', '')
+    additional_context = data.get('additional_context', '')
+    
+    if not tenant_id:
+        return jsonify({"error": "tenant_id required"}), 400
+    
+    if not log_message:
+        return jsonify({"error": "log_message required"}), 400
+    
+    if not validate_tenant(tenant_id):
+        return jsonify({"error": "Invalid or inactive tenant"}), 403
+    
+    # Only allow debugging error logs
+    if log_level.lower() not in ['error', 'err', 'fatal', 'critical']:
+        return jsonify({"error": "AI debug is only available for error logs"}), 400
+    
+    # Call AI analysis
+    result = analyze_error_log(
+        log_message=log_message,
+        log_level=log_level,
+        service_name=service_name,
+        additional_context=additional_context
+    )
+    
+    if result["success"]:
+        logger.info(f"AI debug for tenant {tenant_id}: {result['tokens_used']} tokens")
+        return jsonify({
+            "tenant_id": tenant_id,
+            "analysis": result["analysis"],
+            "tokens_used": result["tokens_used"],
+            "estimated_cost": result["estimated_cost"]
+        }), 200
+    else:
+        logger.warning(f"AI debug failed for tenant {tenant_id}: {result['error']}")
+        return jsonify({
+            "error": result["error"]
+        }), 503
 
 # ==================== MAIN ====================
 

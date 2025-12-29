@@ -33,6 +33,13 @@ interface TracesPanelProps {
   refreshKey?: number;
 }
 
+const TIME_RANGES = [
+  { label: 'Last 15 min', value: '0.25', hours: 0.25 },
+  { label: 'Last 1 hour', value: '1', hours: 1 },
+  { label: 'Last 6 hours', value: '6', hours: 6 },
+  { label: 'Last 24 hours', value: '24', hours: 24 },
+];
+
 const TracesPanel: React.FC<TracesPanelProps> = ({ tenantId, refreshKey }) => {
   const [traces, setTraces] = useState<Trace[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -41,18 +48,47 @@ const TracesPanel: React.FC<TracesPanelProps> = ({ tenantId, refreshKey }) => {
   const [traceDetails, setTraceDetails] = useState<TraceDetail | null>(null);
   const [loadingDetails, setLoadingDetails] = useState<boolean>(false);
 
+  const [newTraceIds, setNewTraceIds] = useState<Set<string>>(new Set());
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [timeRange, setTimeRange] = useState<string>('24'); // Default 24 hours
+
   useEffect(() => {
     if (!tenantId) return;
 
-    const fetchTraces = async () => {
-      setLoading(true);
+    const fetchTraces = async (isAutoRefresh = false) => {
+      // Only show loading spinner on initial load, not auto-refreshes
+      if (!isAutoRefresh) {
+        setLoading(true);
+      }
       setError('');
 
       try {
-        const response = await fetch(`${API_BASE_URL}/api/traces?tenant_id=${tenantId}&limit=20`);
+        const hours = parseFloat(timeRange);
+        const response = await fetch(`${API_BASE_URL}/api/traces?tenant_id=${tenantId}&limit=100&hours=${hours}`);
         if (!response.ok) throw new Error('Failed to fetch traces');
         const data = await response.json();
-        setTraces(data.traces || []);
+        // Sort traces by timestamp - newest first
+        const sortedTraces = (data.traces || []).sort((a: Trace, b: Trace) => {
+          const timeA = parseInt(a.startTimeUnixNano) || 0;
+          const timeB = parseInt(b.startTimeUnixNano) || 0;
+          return timeB - timeA;
+        });
+
+        // Track new traces for highlight animation
+        if (isAutoRefresh && traces.length > 0) {
+          const existingIds = new Set(traces.map(t => t.traceID));
+          const newIds = sortedTraces
+            .filter((t: Trace) => !existingIds.has(t.traceID))
+            .map((t: Trace) => t.traceID);
+          if (newIds.length > 0) {
+            setNewTraceIds(new Set(newIds));
+            // Clear highlight after animation
+            setTimeout(() => setNewTraceIds(new Set()), 3000);
+          }
+        }
+
+        setTraces(sortedTraces);
+        setIsInitialLoad(false);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to fetch traces');
       } finally {
@@ -60,10 +96,10 @@ const TracesPanel: React.FC<TracesPanelProps> = ({ tenantId, refreshKey }) => {
       }
     };
 
-    fetchTraces();
-    const interval = setInterval(fetchTraces, 15000);
+    fetchTraces(false); // Initial load
+    const interval = setInterval(() => fetchTraces(true), 5000); // Auto-refresh every 5s
     return () => clearInterval(interval);
-  }, [tenantId, refreshKey]);
+  }, [tenantId, refreshKey, timeRange]);
 
   const fetchTraceDetails = async (traceId: string) => {
     setLoadingDetails(true);
@@ -178,7 +214,22 @@ const TracesPanel: React.FC<TracesPanelProps> = ({ tenantId, refreshKey }) => {
       <div className="obs-traces-header">
         <div className="obs-traces-info">
           <span className="obs-traces-count">{traces.length} traces</span>
-          <span className="obs-traces-period">Last 24 hours</span>
+          <div className="obs-time-selector">
+            <Clock size={14} className="obs-time-icon" />
+            <select
+              value={timeRange}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setTimeRange(e.target.value)}
+              className="obs-filter-select obs-time-select"
+            >
+              {TIME_RANGES.map(range => (
+                <option key={range.value} value={range.value}>{range.label}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <div className="obs-live-indicator">
+          <span className="obs-live-dot"></span>
+          <span>Live</span>
         </div>
       </div>
 
@@ -189,10 +240,12 @@ const TracesPanel: React.FC<TracesPanelProps> = ({ tenantId, refreshKey }) => {
           const isExpanded = expandedTrace === trace.traceID;
           const isError = trace.status === 'ERROR';
 
+          const isNew = newTraceIds.has(trace.traceID);
+
           return (
             <div
               key={trace.traceID}
-              className={`obs-trace-card ${isError ? 'error' : ''} ${isExpanded ? 'expanded' : ''}`}
+              className={`obs-trace-card ${isError ? 'error' : ''} ${isExpanded ? 'expanded' : ''} ${isNew ? 'new-trace' : ''}`}
             >
               {/* Clickable Header */}
               <div

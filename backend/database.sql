@@ -1,55 +1,26 @@
--- Tenant metadata
+-- ObseraCloud Database Schema
+
+-- Tenants table (main user accounts)
 CREATE TABLE IF NOT EXISTS tenants (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR(255) NOT NULL,
-    subdomain VARCHAR(255) UNIQUE,
+    id SERIAL PRIMARY KEY,
+    tenant_id VARCHAR(255) UNIQUE NOT NULL,
+    company_name VARCHAR(255) NOT NULL,
+    email VARCHAR(255),
+    password_hash VARCHAR(255) NOT NULL,
     api_key VARCHAR(255) UNIQUE NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    last_login TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Users per tenant
-CREATE TABLE IF NOT EXISTS users (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    email VARCHAR(255) NOT NULL,
-    password BYTEA NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(tenant_id, email)
-);
+-- Admin user (password: admin123)
+INSERT INTO tenants (tenant_id, company_name, email, password_hash, api_key, is_active) VALUES 
+    ('admin', 'ObseraCloud Admin', 'admin@obsera.cloud', '$2b$12$4aO4aZhCACOZcGRALmZdY.FGgQgPZnsplhg1Sy8D8uQlGK7XreQmm', 'admin_key_super_secret_123', TRUE)
+ON CONFLICT (tenant_id) DO NOTHING;
 
--- API Keys for programmatic access
-CREATE TABLE IF NOT EXISTS api_keys (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    key_hash VARCHAR(255) NOT NULL,
-    name VARCHAR(255),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    expires_at TIMESTAMP
-);
-
--- Usage tracking for billing
-CREATE TABLE IF NOT EXISTS usage_logs (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    metric_type VARCHAR(50), -- 'logs', 'metrics', 'traces'
-    data_size_bytes BIGINT,
-    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Test data: Create two tenants
-INSERT INTO tenants (name, subdomain, api_key) VALUES 
-    ('Tenant A', 'tenant-a', 'key_tenant_a_12345'),
-    ('Tenant B', 'tenant-b', 'key_tenant_b_67890')
-ON CONFLICT DO NOTHING;
-
--- Create test users (password: password123 hashed with bcrypt)
--- In production, use bcrypt to hash passwords
-INSERT INTO users (tenant_id, email, password) 
-SELECT id, 'admin@tenant-a.local', '\x24322412243668726f61757656577a4659546c5265624742714f48506e4c4f484f6b5038495a54436f4a634c4a746876614e4f53' 
-FROM tenants WHERE subdomain = 'tenant-a'
-ON CONFLICT DO NOTHING;
-
-INSERT INTO users (tenant_id, email, password) 
-SELECT id, 'admin@tenant-b.local', '\x24322412243668726f61757656577a4659546c5265624742714f48506e4c4f484f6b5038495a54436f4a634c4a746876614e4f53' 
-FROM tenants WHERE subdomain = 'tenant-b'
-ON CONFLICT DO NOTHING;
+-- Demo tenants (password: demo123)
+INSERT INTO tenants (tenant_id, company_name, email, password_hash, api_key, is_active) VALUES 
+    ('acme', 'Acme Corporation', 'admin@acme.com', '$2b$12$YQeYhPOecgEVhVs3lRINruTI/dFTQquTlfKokGcgTNM5OOCsENmLW', 'acme_api_key_12345', TRUE),
+    ('globex', 'Globex Industries', 'admin@globex.com', '$2b$12$YQeYhPOecgEVhVs3lRINruTI/dFTQquTlfKokGcgTNM5OOCsENmLW', 'globex_api_key_67890', TRUE),
+    ('initech', 'Initech Corp', 'admin@initech.com', '$2b$12$YQeYhPOecgEVhVs3lRINruTI/dFTQquTlfKokGcgTNM5OOCsENmLW', 'initech_api_key_abcde', TRUE)
+ON CONFLICT (tenant_id) DO NOTHING;

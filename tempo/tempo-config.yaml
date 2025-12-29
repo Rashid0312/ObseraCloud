@@ -13,7 +13,9 @@ distributor:
           endpoint: 0.0.0.0:4317
 
 ingester:
-  max_block_duration: 5m
+  max_block_duration: 30s   # Flush blocks every 30 seconds for faster searchability
+  trace_idle_period: 5s     # Mark trace idle after 5s
+  flush_check_period: 5s    # Check for flushes every 5s
 
 compactor:
   compaction:

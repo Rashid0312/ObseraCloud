@@ -455,3 +455,60 @@
 .obs-logs-compact .obs-log-service {
   display: none;
 }
+
+/* AI Debug Button */
+.ai-debug-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 12px;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ai-debug-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+}
+
+.ai-debug-btn:active {
+  transform: translateY(0);
+}
+
+.ai-debug-btn svg {
+  flex-shrink: 0;
+}
+
+
+
+/* AI Debug Button - Inline (in log row) */
+.ai-debug-btn-inline {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  margin-left: 6px;
+  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+  border: none;
+  border-radius: 4px;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  opacity: 0.85;
+}
+
+.ai-debug-btn-inline:hover {
+  opacity: 1;
+  transform: scale(1.1);
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.5);
+}
+
