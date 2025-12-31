@@ -9,6 +9,7 @@ interface Log {
   level: string;
   message: string;
   service: string;
+  trace_id?: string;
   labels?: {
     [key: string]: string;
   };
@@ -18,6 +19,7 @@ interface LogsPanelProps {
   tenantId: string;
   refreshKey?: number;
   compact?: boolean;
+  onNavigateToTrace?: (traceId: string) => void;
 }
 
 const TIME_RANGES = [
@@ -27,7 +29,7 @@ const TIME_RANGES = [
   { label: 'Last 24 hours', value: '24', hours: 24 },
 ];
 
-const LogsPanel: React.FC<LogsPanelProps> = ({ tenantId, refreshKey, compact }) => {
+const LogsPanel: React.FC<LogsPanelProps> = ({ tenantId, refreshKey, compact, onNavigateToTrace }) => {
   const [logs, setLogs] = useState<Log[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
@@ -232,7 +234,26 @@ const LogsPanel: React.FC<LogsPanelProps> = ({ tenantId, refreshKey, compact }) 
                           <span className="obs-metadata-key">Timestamp:</span>
                           <span className="obs-metadata-value">{log.timestamp}</span>
                         </div>
-                        {Object.entries(log.labels).map(([key, value]) => (
+                        {/* Clickable Trace ID for cross-telemetry correlation */}
+                        {(log.trace_id || log.labels?.trace_id) && (
+                          <div className="obs-metadata-item obs-trace-link">
+                            <span className="obs-metadata-key">Trace ID:</span>
+                            <button
+                              className="obs-trace-id-btn"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const traceId = log.trace_id || log.labels?.trace_id;
+                                if (traceId && onNavigateToTrace) {
+                                  onNavigateToTrace(traceId);
+                                }
+                              }}
+                              title="View trace in Traces panel"
+                            >
+                              🔗 {(log.trace_id || log.labels?.trace_id)?.slice(0, 16)}...
+                            </button>
+                          </div>
+                        )}
+                        {Object.entries(log.labels).filter(([key]) => key !== 'trace_id').map(([key, value]) => (
                           <div key={key} className="obs-metadata-item">
                             <span className="obs-metadata-key">{key}:</span>
                             <span className="obs-metadata-value">{value}</span>

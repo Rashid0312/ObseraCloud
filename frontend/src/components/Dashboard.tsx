@@ -49,10 +49,17 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, onGoHome }) => {
   const [activeView, setActiveView] = useState<'overview' | 'logs' | 'metrics' | 'traces' | 'integration' | 'settings' | 'admin'>('overview');
   const [expandedGroups, setExpandedGroups] = useState<string[]>(['telemetry']);
   const [refreshKey, setRefreshKey] = useState<number>(0);
+  const [highlightedTraceId, setHighlightedTraceId] = useState<string | null>(null);
   const [stats, setStats] = useState<Stats>({ totalLogs: 0, errorCount: 0, errorRate: 0, avgResponseTime: 0, activeTraces: 0 });
   const { theme, toggleTheme } = useTheme();
 
   const isAdmin = tenantId === 'admin';
+
+  // Handler for navigating from logs to traces
+  const handleNavigateToTrace = (traceId: string) => {
+    setHighlightedTraceId(traceId);
+    setActiveView('traces');
+  };
 
   useEffect(() => {
     const storedTenantId = localStorage.getItem('tenant_id');
@@ -337,7 +344,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, onGoHome }) => {
               <div className="dashboard-panels-grid">
                 <div className="dashboard-panel">
                   <h3 className="dashboard-panel-title">Recent Logs</h3>
-                  <LogsPanel tenantId={tenantId} refreshKey={refreshKey} compact />
+                  <LogsPanel tenantId={tenantId} refreshKey={refreshKey} compact onNavigateToTrace={handleNavigateToTrace} />
                 </div>
                 <div className="dashboard-panel">
                   <h3 className="dashboard-panel-title">Metrics</h3>
@@ -347,13 +354,13 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, onGoHome }) => {
             </div>
           )}
           {activeView === 'logs' && (
-            <LogsPanel tenantId={tenantId} refreshKey={refreshKey} />
+            <LogsPanel tenantId={tenantId} refreshKey={refreshKey} onNavigateToTrace={handleNavigateToTrace} />
           )}
           {activeView === 'metrics' && (
             <MetricsChart tenantId={tenantId} refreshKey={refreshKey} />
           )}
           {activeView === 'traces' && (
-            <TracesPanel tenantId={tenantId} refreshKey={refreshKey} />
+            <TracesPanel tenantId={tenantId} refreshKey={refreshKey} highlightedTraceId={highlightedTraceId} />
           )}
           {activeView === 'integration' && (
             <IntegrationPanel apiKey={apiKey} tenantId={tenantId} />

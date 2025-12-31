@@ -1,7 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { API_BASE_URL } from '../config';
-import { AlertCircle, Check, X, ChevronDown, ChevronRight, Clock, Server, Layers } from 'lucide-react';
+import { AlertCircle, Check, X, ChevronDown, ChevronRight, Clock, Server, Layers, Link } from 'lucide-react';
 import './TracesPanel.css';
+import CorrelatedView from './CorrelatedView';
 
 interface Trace {
   traceID: string;
@@ -31,6 +33,7 @@ interface TraceDetail {
 interface TracesPanelProps {
   tenantId: string;
   refreshKey?: number;
+  highlightedTraceId?: string | null;
 }
 
 const TIME_RANGES = [
@@ -40,7 +43,7 @@ const TIME_RANGES = [
   { label: 'Last 24 hours', value: '24', hours: 24 },
 ];
 
-const TracesPanel: React.FC<TracesPanelProps> = ({ tenantId, refreshKey }) => {
+const TracesPanel: React.FC<TracesPanelProps> = ({ tenantId, refreshKey, highlightedTraceId }) => {
   const [traces, setTraces] = useState<Trace[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
@@ -51,6 +54,69 @@ const TracesPanel: React.FC<TracesPanelProps> = ({ tenantId, refreshKey }) => {
   const [newTraceIds, setNewTraceIds] = useState<Set<string>>(new Set());
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [timeRange, setTimeRange] = useState<string>('24'); // Default 24 hours
+  const [correlatedTraceId, setCorrelatedTraceId] = useState<string | null>(null);
+
+  // Auto-expand trace when navigating from logs panel
+  // Auto-expand trace when navigating from logs panel
+  useEffect(() => {
+    if (!highlightedTraceId) return;
+
+    const traceExists = traces.find(t => t.traceID === highlightedTraceId);
+
+    if (traceExists) {
+      setExpandedTrace(highlightedTraceId);
+      // Scroll to the highlighted trace after a short delay
+      setTimeout(() => {
+        const traceElement = document.getElementById(`trace-${highlightedTraceId}`);
+        if (traceElement) {
+          traceElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
+    } else {
+      // Trace not found in list (likely due to cache delay), fetch it directly
+      console.log(`Fetching missing trace: ${highlightedTraceId}`);
+      fetch(`${API_BASE_URL}/api/traces/${highlightedTraceId}`)
+        .then(res => {
+          if (!res.ok) throw new Error('Trace not found');
+          return res.json();
+        })
+        .then(data => {
+          if (data && data.spans && data.spans.length > 0) {
+            // Construct trace summary from details
+            const rootSpan = data.spans[0]; // Sorted by time in backend
+            const hasError = data.spans.some((s: any) => s.status === 'ERROR');
+
+            // Calculate total duration
+            const startTimes = data.spans.map((s: any) => parseInt(s.startTimeUnixNano));
+            const endTimes = data.spans.map((s: any) => parseInt(s.startTimeUnixNano) + (s.durationMs * 1000000));
+            const minStart = Math.min(...startTimes);
+            const maxEnd = Math.max(...endTimes);
+            const totalDurationMs = (maxEnd - minStart) / 1000000;
+
+            const newTrace: Trace = {
+              traceID: data.traceId, // Note: backend returns traceId here
+              rootTraceName: rootSpan.operationName,
+              rootServiceName: rootSpan.serviceName,
+              startTimeUnixNano: rootSpan.startTimeUnixNano,
+              durationMs: Math.round(totalDurationMs) || rootSpan.durationMs,
+              status: hasError ? 'ERROR' : 'OK'
+            };
+
+            // Add to top of list and highlight, avoiding duplicates
+            setTraces(prev => {
+              if (prev.some(t => t.traceID === newTrace.traceID)) {
+                return prev;
+              }
+              return [newTrace, ...prev];
+            });
+            // The effect will run again due to traces dependency and handle scrolling
+          }
+        })
+        .catch(err => {
+          console.error("Failed to fetch missing trace:", err);
+        });
+    }
+  }, [highlightedTraceId, traces]);
 
   useEffect(() => {
     if (!tenantId) return;
@@ -245,7 +311,8 @@ const TracesPanel: React.FC<TracesPanelProps> = ({ tenantId, refreshKey }) => {
           return (
             <div
               key={trace.traceID}
-              className={`obs-trace-card ${isError ? 'error' : ''} ${isExpanded ? 'expanded' : ''} ${isNew ? 'new-trace' : ''}`}
+              id={`trace-${trace.traceID}`}
+              className={`obs-trace-card ${isError ? 'error' : ''} ${isExpanded ? 'expanded' : ''} ${isNew ? 'new-trace' : ''} ${highlightedTraceId === trace.traceID ? 'highlighted' : ''}`}
             >
               {/* Clickable Header */}
               <div
@@ -298,6 +365,16 @@ const TracesPanel: React.FC<TracesPanelProps> = ({ tenantId, refreshKey }) => {
                         </div>
                         <div className="obs-waterfall-trace-id">
                           <code>{trace.traceID}</code>
+                          <button
+                            className="obs-correlate-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setCorrelatedTraceId(trace.traceID);
+                            }}
+                          >
+                            <Link size={14} />
+                            View Correlated
+                          </button>
                         </div>
                       </div>
                       <div className="obs-waterfall-spans">
@@ -353,6 +430,20 @@ const TracesPanel: React.FC<TracesPanelProps> = ({ tenantId, refreshKey }) => {
           );
         })}
       </div>
+
+      {/* Correlated View Modal - rendered via portal to escape overflow:hidden */}
+      {correlatedTraceId && createPortal(
+        <div className="obs-correlated-modal-overlay" onClick={() => setCorrelatedTraceId(null)}>
+          <div className="obs-correlated-modal" onClick={(e) => e.stopPropagation()}>
+            <CorrelatedView
+              traceId={correlatedTraceId}
+              tenantId={tenantId}
+              onClose={() => setCorrelatedTraceId(null)}
+            />
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 };

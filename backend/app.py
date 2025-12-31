@@ -759,6 +759,187 @@ def search_traces():
         logger.error(f"Tempo search failed: {str(e)}")
         return jsonify({"error": f"Tempo search failed: {str(e)}"}), 500
 
+# ==================== CROSS-TELEMETRY CORRELATION ====================
+
+@app.route('/api/correlate/<trace_id>', methods=['GET'])
+@limiter.limit("60 per minute")
+def correlate_telemetry(trace_id):
+    """Get all correlated telemetry (trace, logs, metrics) for a trace_id"""
+    tenant_id = request.args.get('tenant_id')
+    
+    if not tenant_id:
+        return jsonify({"error": "tenant_id query parameter required"}), 400
+    
+    if not validate_tenant(tenant_id):
+        return jsonify({"error": "Invalid or inactive tenant"}), 403
+    
+    result = {
+        "trace_id": trace_id,
+        "tenant_id": tenant_id,
+        "trace": None,
+        "logs": [],
+        "metrics": [],
+        "timeline": []
+    }
+    
+    trace_start_time = None
+    trace_end_time = None
+    
+    # 1. Get trace from Tempo
+    try:
+        tempo_response = requests.get(
+            f"{TEMPO_URL}/api/traces/{trace_id}",
+            timeout=10
+        )
+        
+        if tempo_response.status_code == 200:
+            trace_data = tempo_response.json()
+            
+            # Extract spans and find time range
+            spans = []
+            for batch in trace_data.get('batches', []):
+                resource = batch.get('resource', {})
+                for scope_span in batch.get('scopeSpans', []):
+                    for span in scope_span.get('spans', []):
+                        span_start = int(span.get('startTimeUnixNano', 0))
+                        span_end = int(span.get('endTimeUnixNano', 0))
+                        
+                        if trace_start_time is None or span_start < trace_start_time:
+                            trace_start_time = span_start
+                        if trace_end_time is None or span_end > trace_end_time:
+                            trace_end_time = span_end
+                        
+                        spans.append({
+                            "spanId": span.get('spanId', ''),
+                            "parentSpanId": span.get('parentSpanId', ''),
+                            "name": span.get('name', ''),
+                            "startTime": span_start,
+                            "endTime": span_end,
+                            "duration_ms": (span_end - span_start) / 1_000_000 if span_end and span_start else 0,
+                            "status": span.get('status', {}).get('code', 0),
+                            "attributes": {attr['key']: attr.get('value', {}).get('stringValue', attr.get('value', {}).get('intValue', '')) 
+                                          for attr in span.get('attributes', [])}
+                        })
+                        
+                        # Add to timeline
+                        result["timeline"].append({
+                            "type": "span",
+                            "timestamp": span_start,
+                            "data": {
+                                "name": span.get('name', ''),
+                                "duration_ms": (span_end - span_start) / 1_000_000 if span_end and span_start else 0,
+                                "status": "error" if span.get('status', {}).get('code', 0) == 2 else "ok"
+                            }
+                        })
+            
+            result["trace"] = {
+                "traceId": trace_id,
+                "spans": spans,
+                "spanCount": len(spans),
+                "duration_ms": (trace_end_time - trace_start_time) / 1_000_000 if trace_end_time and trace_start_time else 0
+            }
+            
+    except Exception as e:
+        logger.warning(f"Failed to get trace from Tempo: {e}")
+    
+    # 2. Get related logs from Loki
+    try:
+        loki_query = f'{{job=~"demo-app|traces-app", tenant_id="{tenant_id}"}} |= "{trace_id}"'
+        
+        loki_response = requests.get(
+            f"{LOKI_URL}/loki/api/v1/query_range",
+            params={
+                "query": loki_query,
+                "limit": 100,
+                "start": str(int((datetime.now() - timedelta(hours=24)).timestamp() * 1e9)),
+                "end": str(int(datetime.now().timestamp() * 1e9))
+            },
+            timeout=10
+        )
+        
+        if loki_response.status_code == 200:
+            data = loki_response.json()
+            for stream in data.get('data', {}).get('result', []):
+                labels = stream.get('stream', {})
+                for value in stream.get('values', []):
+                    timestamp = int(value[0])
+                    message = value[1] if len(value) > 1 else ""
+                    
+                    log_entry = {
+                        "timestamp": timestamp,
+                        "message": message,
+                        "level": labels.get('level', 'info'),
+                        "service": labels.get('service_name', ''),
+                        "trace_id": trace_id
+                    }
+                    result["logs"].append(log_entry)
+                    
+                    # Add to timeline
+                    result["timeline"].append({
+                        "type": "log",
+                        "timestamp": timestamp,
+                        "data": log_entry
+                    })
+                    
+    except Exception as e:
+        logger.warning(f"Failed to get logs from Loki: {e}")
+    
+    # 3. Get related metrics (if we have trace time range)
+    if trace_start_time and trace_end_time:
+        try:
+            # Extend time range slightly for context
+            start_ns = trace_start_time - (60 * 1e9)  # 1 min before
+            end_ns = trace_end_time + (60 * 1e9)  # 1 min after
+            
+            metrics_query = f'{{job="metrics-app", tenant_id="{tenant_id}"}}'
+            
+            metrics_response = requests.get(
+                f"{LOKI_URL}/loki/api/v1/query_range",
+                params={
+                    "query": metrics_query,
+                    "limit": 50,
+                    "start": str(int(start_ns)),
+                    "end": str(int(end_ns))
+                },
+                timeout=10
+            )
+            
+            if metrics_response.status_code == 200:
+                data = metrics_response.json()
+                for stream in data.get('data', {}).get('result', []):
+                    labels = stream.get('stream', {})
+                    for value in stream.get('values', []):
+                        timestamp = int(value[0])
+                        metric_value = value[1] if len(value) > 1 else ""
+                        
+                        metric_entry = {
+                            "timestamp": timestamp,
+                            "name": labels.get('metric_name', 'unknown'),
+                            "value": metric_value,
+                            "service": labels.get('service_name', '')
+                        }
+                        result["metrics"].append(metric_entry)
+                        
+                        # Add to timeline
+                        result["timeline"].append({
+                            "type": "metric",
+                            "timestamp": timestamp,
+                            "data": metric_entry
+                        })
+                        
+        except Exception as e:
+            logger.warning(f"Failed to get metrics from Loki: {e}")
+    
+    # Sort timeline by timestamp
+    result["timeline"].sort(key=lambda x: x["timestamp"])
+    
+    # Convert timestamps to relative times from trace start
+    if trace_start_time:
+        for item in result["timeline"]:
+            item["relative_ms"] = (item["timestamp"] - trace_start_time) / 1_000_000
+    
+    return jsonify(result), 200
+
 # ==================== HEALTH CHECK ====================
 
 @app.route('/health', methods=['GET'])
