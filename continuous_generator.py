@@ -172,30 +172,51 @@ def send_correlated_metrics(ctx: dict) -> bool:
 
 
 def send_correlated_trace(ctx: dict) -> bool:
-    """Send trace correlated with the request"""
-    # Store trace in Loki for now (Tempo trace ingest would be via OTLP)
+    """Send trace to Tempo via OTLP HTTP"""
+    start_time_ns = int(ctx["timestamp_ns"])
+    end_time_ns = start_time_ns + (ctx["duration_ms"] * 1_000_000)
+    
+    # Build OTLP trace payload
     payload = {
-        "streams": [{
-            "stream": {
-                "job": "traces-app",
-                "tenant_id": ctx["tenant_id"],
-                "trace_type": "span",
-                "trace_id": ctx["trace_id"],
-                "span_id": ctx["span_id"],
-                "parent_span_id": "",
-                "service_name": ctx["service"],
-                "operation_name": f"{ctx['method']} {ctx['path']}",
-                "duration_ms": str(ctx["duration_ms"]),
-                "status": "ERROR" if ctx["is_error"] else "OK",
-                "http_status": str(ctx["status_code"]),
+        "resourceSpans": [{
+            "resource": {
+                "attributes": [
+                    {"key": "service.name", "value": {"stringValue": ctx["service"]}},
+                    {"key": "tenant_id", "value": {"stringValue": ctx["tenant_id"]}}
+                ]
             },
-            "values": [[ctx["timestamp_ns"], f"trace={ctx['trace_id']} duration={ctx['duration_ms']}ms status={ctx['status_code']}"]]
+            "scopeSpans": [{
+                "scope": {"name": "obsera-generator"},
+                "spans": [{
+                    "traceId": ctx["trace_id"],
+                    "spanId": ctx["span_id"],
+                    "parentSpanId": "",
+                    "name": f"{ctx['method']} {ctx['path']}",
+                    "kind": 2,  # SPAN_KIND_SERVER
+                    "startTimeUnixNano": str(start_time_ns),
+                    "endTimeUnixNano": str(end_time_ns),
+                    "attributes": [
+                        {"key": "tenant_id", "value": {"stringValue": ctx["tenant_id"]}},
+                        {"key": "http.method", "value": {"stringValue": ctx["method"]}},
+                        {"key": "http.url", "value": {"stringValue": ctx["path"]}},
+                        {"key": "http.status_code", "value": {"intValue": ctx["status_code"]}}
+                    ],
+                    "status": {
+                        "code": 2 if ctx["is_error"] else 1  # 1=OK, 2=ERROR
+                    }
+                }]
+            }]
         }]
     }
     
     try:
-        response = requests.post(f"{LOKI_URL}/loki/api/v1/push", json=payload, timeout=5)
-        return response.status_code == 204
+        response = requests.post(
+            f"{TEMPO_URL}/v1/traces",
+            json=payload,
+            headers={"Content-Type": "application/json"},
+            timeout=5
+        )
+        return response.status_code in [200, 202]
     except:
         return False
 

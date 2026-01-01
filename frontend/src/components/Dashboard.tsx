@@ -49,10 +49,17 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, onGoHome }) => {
   const [activeView, setActiveView] = useState<'overview' | 'logs' | 'metrics' | 'traces' | 'integration' | 'settings' | 'admin'>('overview');
   const [expandedGroups, setExpandedGroups] = useState<string[]>(['telemetry']);
   const [refreshKey, setRefreshKey] = useState<number>(0);
+  const [highlightedTraceId, setHighlightedTraceId] = useState<string | null>(null);
   const [stats, setStats] = useState<Stats>({ totalLogs: 0, errorCount: 0, errorRate: 0, avgResponseTime: 0, activeTraces: 0 });
   const { theme, toggleTheme } = useTheme();
 
   const isAdmin = tenantId === 'admin';
+
+  // Handler for navigating from logs to traces
+  const handleNavigateToTrace = (traceId: string) => {
+    setHighlightedTraceId(traceId);
+    setActiveView('traces');
+  };
 
   useEffect(() => {
     const storedTenantId = localStorage.getItem('tenant_id');
@@ -83,17 +90,16 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, onGoHome }) => {
         const logs = logsData.logs || [];
         const errorLogs = logs.filter((l: any) => l.level?.toLowerCase() === 'error');
         const metrics = metricsData.metrics || [];
-        const responseTimes = metrics.filter((m: any) => m.metric_name === 'http_response_time_seconds');
 
-        const avgTime = responseTimes.length > 0
-          ? responseTimes.reduce((acc: number, m: any) => acc + parseFloat(m.value?.split('=')[1] || m.value || 0), 0) / responseTimes.length
-          : 0;
+        // Calculate total requests from http_requests_total metric
+        const requestMetrics = metrics.filter((m: any) => m.metric_name === 'http_requests_total');
+        const totalRequests = requestMetrics.reduce((sum: number, m: any) => sum + parseFloat(m.value || 0), 0);
 
         setStats({
           totalLogs: logs.length,
           errorCount: errorLogs.length,
           errorRate: logs.length > 0 ? (errorLogs.length / logs.length * 100) : 0,
-          avgResponseTime: avgTime * 1000,
+          avgResponseTime: 0, // Will be calculated from duration metrics when available
           activeTraces: tracesData.count || 0
         });
       } catch (err) {
@@ -337,7 +343,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, onGoHome }) => {
               <div className="dashboard-panels-grid">
                 <div className="dashboard-panel">
                   <h3 className="dashboard-panel-title">Recent Logs</h3>
-                  <LogsPanel tenantId={tenantId} refreshKey={refreshKey} compact />
+                  <LogsPanel tenantId={tenantId} refreshKey={refreshKey} compact onNavigateToTrace={handleNavigateToTrace} />
                 </div>
                 <div className="dashboard-panel">
                   <h3 className="dashboard-panel-title">Metrics</h3>
@@ -347,13 +353,13 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, onGoHome }) => {
             </div>
           )}
           {activeView === 'logs' && (
-            <LogsPanel tenantId={tenantId} refreshKey={refreshKey} />
+            <LogsPanel tenantId={tenantId} refreshKey={refreshKey} onNavigateToTrace={handleNavigateToTrace} />
           )}
           {activeView === 'metrics' && (
             <MetricsChart tenantId={tenantId} refreshKey={refreshKey} />
           )}
           {activeView === 'traces' && (
-            <TracesPanel tenantId={tenantId} refreshKey={refreshKey} />
+            <TracesPanel tenantId={tenantId} refreshKey={refreshKey} highlightedTraceId={highlightedTraceId} />
           )}
           {activeView === 'integration' && (
             <IntegrationPanel apiKey={apiKey} tenantId={tenantId} />

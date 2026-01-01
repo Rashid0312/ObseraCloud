@@ -1,0 +1,343 @@
+/* Correlated View - Clean Modal Styles */
+
+.correlated-view {
+    background: linear-gradient(145deg,
+            hsl(220 15% 10% / 0.98) 0%,
+            hsl(220 15% 6% / 0.99) 100%);
+    border-radius: 16px;
+    min-width: 600px;
+    max-width: 800px;
+    max-height: 80vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid hsl(220 25% 25% / 0.4);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+/* Header */
+.correlated-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid hsl(220 20% 20% / 0.5);
+    background: linear-gradient(180deg,
+            hsl(220 15% 15% / 0.5) 0%,
+            transparent 100%);
+}
+
+.header-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.header-info h2 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #fff;
+}
+
+.trace-id-badge {
+    font-family: 'Monaco', 'Menlo', monospace;
+    font-size: 12px;
+    padding: 4px 10px;
+    background: hsl(220 30% 20% / 0.6);
+    color: hsl(220 70% 70%);
+    border-radius: 6px;
+    border: 1px solid hsl(220 30% 30% / 0.4);
+}
+
+.duration-badge {
+    font-size: 13px;
+    font-weight: 600;
+    padding: 4px 10px;
+    background: linear-gradient(135deg,
+            hsl(150 60% 25% / 0.4) 0%,
+            hsl(150 60% 20% / 0.3) 100%);
+    color: hsl(150 70% 65%);
+    border-radius: 6px;
+    border: 1px solid hsl(150 50% 30% / 0.4);
+}
+
+.close-btn {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: hsl(220 20% 20% / 0.5);
+    color: #888;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.close-btn:hover {
+    background: hsl(0 60% 40% / 0.4);
+    color: hsl(0 70% 70%);
+}
+
+/* Stats Bar */
+.stats-bar {
+    display: flex;
+    gap: 24px;
+    padding: 16px 24px;
+    background: hsl(220 15% 12% / 0.5);
+    border-bottom: 1px solid hsl(220 20% 20% / 0.5);
+}
+
+.stat {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.stat-icon {
+    font-size: 18px;
+}
+
+.stat-value {
+    font-size: 20px;
+    font-weight: 700;
+    color: #fff;
+}
+
+.stat-label {
+    font-size: 13px;
+    color: #888;
+}
+
+/* Tabs */
+.tabs {
+    display: flex;
+    gap: 4px;
+    padding: 12px 24px;
+    background: hsl(220 15% 10% / 0.5);
+    border-bottom: 1px solid hsl(220 20% 20% / 0.5);
+}
+
+.tab {
+    padding: 10px 20px;
+    background: transparent;
+    border: none;
+    color: #888;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.tab:hover {
+    background: hsl(220 20% 20% / 0.4);
+    color: #ccc;
+}
+
+.tab.active {
+    background: linear-gradient(135deg,
+            hsl(220 60% 45% / 0.3) 0%,
+            hsl(220 60% 35% / 0.2) 100%);
+    color: hsl(220 70% 75%);
+    border: 1px solid hsl(220 50% 45% / 0.4);
+}
+
+/* Content */
+.correlated-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 24px;
+}
+
+/* Loading / Error States */
+.loading-spinner {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 60px;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid hsl(220 20% 20%);
+    border-top-color: hsl(220 70% 60%);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.error-message {
+    padding: 40px;
+    text-align: center;
+    color: hsl(0 70% 65%);
+}
+
+/* Empty State */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    text-align: center;
+}
+
+.empty-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    opacity: 0.5;
+}
+
+.empty-text {
+    font-size: 16px;
+    color: #888;
+    margin-bottom: 8px;
+}
+
+.empty-hint {
+    font-size: 13px;
+    color: #666;
+}
+
+/* Trace View */
+.trace-view {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.span-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    background: hsl(220 15% 14% / 0.6);
+    border-radius: 10px;
+    border: 1px solid hsl(220 20% 22% / 0.5);
+    transition: all 0.2s ease;
+}
+
+.span-row:hover {
+    background: hsl(220 15% 18% / 0.7);
+    border-color: hsl(220 30% 35% / 0.5);
+}
+
+.span-row.error {
+    border-color: hsl(0 50% 35% / 0.5);
+    background: hsl(0 30% 15% / 0.4);
+}
+
+.span-status-icon {
+    font-size: 16px;
+}
+
+.span-info {
+    flex: 1;
+}
+
+.span-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 2px;
+}
+
+.span-service {
+    font-size: 12px;
+    color: #888;
+}
+
+.span-duration {
+    font-size: 14px;
+    font-weight: 600;
+    color: hsl(220 70% 70%);
+    padding: 4px 10px;
+    background: hsl(220 30% 20% / 0.5);
+    border-radius: 6px;
+}
+
+/* Logs View */
+.logs-view {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.log-row {
+    display: grid;
+    grid-template-columns: 80px 60px 100px 1fr;
+    gap: 12px;
+    align-items: center;
+    padding: 12px 14px;
+    background: hsl(220 15% 14% / 0.6);
+    border-radius: 8px;
+    border: 1px solid hsl(220 20% 22% / 0.5);
+    font-size: 13px;
+}
+
+.log-row.error {
+    border-color: hsl(0 50% 35% / 0.5);
+    background: hsl(0 30% 15% / 0.3);
+}
+
+.log-row.warning {
+    border-color: hsl(40 50% 35% / 0.5);
+    background: hsl(40 30% 15% / 0.3);
+}
+
+.log-time {
+    color: #666;
+    font-family: 'Monaco', 'Menlo', monospace;
+    font-size: 11px;
+}
+
+.log-level-badge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    text-align: center;
+}
+
+.log-level-badge.info {
+    background: hsl(220 50% 25% / 0.5);
+    color: hsl(220 70% 70%);
+}
+
+.log-level-badge.warning {
+    background: hsl(40 50% 25% / 0.5);
+    color: hsl(40 70% 65%);
+}
+
+.log-level-badge.error {
+    background: hsl(0 50% 25% / 0.5);
+    color: hsl(0 70% 65%);
+}
+
+.log-level-badge.debug {
+    background: hsl(280 30% 25% / 0.5);
+    color: hsl(280 50% 70%);
+}
+
+.log-service {
+    color: hsl(180 50% 60%);
+    font-size: 12px;
+}
+
+.log-message {
+    color: #ccc;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}

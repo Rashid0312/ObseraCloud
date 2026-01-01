@@ -394,7 +394,7 @@ def get_logs():
 @app.route('/api/metrics', methods=['GET'])
 @limiter.limit("100 per minute")
 def get_metrics():
-    """Query metrics from Loki (stored as structured logs)"""
+    """Query metrics from Prometheus and convert to frontend format"""
     tenant_id = request.args.get('tenant_id')
     metric_name = request.args.get('metric', '')
     hours = float(request.args.get('hours', '1'))
@@ -405,55 +405,55 @@ def get_metrics():
     if not validate_tenant(tenant_id):
         return jsonify({"error": "Invalid or inactive tenant"}), 403
     
-    # Build Loki query for metrics logs
-    if metric_name:
-        logql_query = f'{{tenant_id="{tenant_id}", metric_name="{metric_name}"}}'
-    else:
-        logql_query = f'{{tenant_id="{tenant_id}"}}'
-    
+    # Query only http_requests_total to keep payload small and fast
+    # This is the primary metric the frontend charts need
+    promql_query = f'http_requests_total{{tenant_id="{tenant_id}"}}'
     end_time = datetime.now()
     start_time = end_time - timedelta(hours=hours)
     
+    # Calculate appropriate step size based on time range
+    if hours <= 1:
+        step = "30s"  # 1 hour = 120 points
+    elif hours <= 6:
+        step = "3m"   # 6 hours = 120 points
+    else:
+        step = "10m"  # 24 hours = 144 points
+    
     try:
         response = requests.get(
-            f"{LOKI_URL}/loki/api/v1/query_range",
+            f"{PROMETHEUS_URL}/api/v1/query_range",
             params={
-                "query": logql_query,
-                "limit": 1000,  # Increased for more chart data points
-                "start": int(start_time.timestamp() * 1e9),
-                "end": int(end_time.timestamp() * 1e9)
+                "query": promql_query,
+                "start": start_time.timestamp(),
+                "end": end_time.timestamp(),
+                "step": step
             },
             timeout=10
         )
         response.raise_for_status()
         
         data = response.json()
+        logger.info(f"DEBUG: Prometheus response status={response.status_code}, result_count={len(data.get('data', {}).get('result', []))}")
         metrics = []
         
-        # Parse metric logs
-        for stream in data.get('data', {}).get('result', []):
-            stream_labels = stream.get('stream', {})
-            metric_name = stream_labels.get('metric_name', 'unknown')
+        # Convert Prometheus format to frontend format
+        for result in data.get('data', {}).get('result', []):
+            metric_labels = result.get('metric', {})
+            metric_name_from_data = metric_labels.get('__name__', 'unknown')
             
-            for value in stream.get('values', []):
-                timestamp_ns = int(value[0])
-                message = value[1]  # Format: "metric_name=value"
+            for value in result.get('values', []):
+                timestamp_unix = float(value[0])
+                metric_value = value[1]
                 
-                # Extract value from message
-                if '=' in message:
-                    metric_value = message.split('=')[1]
-                else:
-                    metric_value = message
-                
-                # Convert to UTC+1 (CET) for display - same as logs
-                utc_dt = datetime.fromtimestamp(timestamp_ns / 1e9, tz=timezone.utc)
-                local_dt = utc_dt + timedelta(hours=1)  # UTC+1
+                # Convert to UTC+1 (CET) for display
+                utc_dt = datetime.fromtimestamp(timestamp_unix, tz=timezone.utc)
+                local_dt = utc_dt + timedelta(hours=1)
                 
                 metrics.append({
                     "timestamp": local_dt.strftime('%Y-%m-%dT%H:%M:%S'),
-                    "metric_name": metric_name,
+                    "metric_name": metric_name_from_data,
                     "value": metric_value,
-                    "labels": stream_labels
+                    "labels": metric_labels
                 })
         
         # Sort by timestamp descending
@@ -464,15 +464,15 @@ def get_metrics():
             "tenant_id": tenant_id,
             "metrics": metrics,
             "count": len(metrics),
-            "query": logql_query
+            "query": promql_query
         }), 200
         
     except requests.exceptions.ConnectionError:
-        logger.error(f"Cannot connect to Loki at {LOKI_URL}")
-        return jsonify({"error": "Loki service unavailable"}), 503
+        logger.error(f"Cannot connect to Prometheus at {PROMETHEUS_URL}")
+        return jsonify({"error": "Prometheus service unavailable"}), 503
     except requests.RequestException as e:
-        logger.error(f"Loki query failed: {str(e)}")
-        return jsonify({"error": f"Failed to query Loki: {str(e)}"}), 500
+        logger.error(f"Prometheus query failed: {str(e)}")
+        return jsonify({"error": f"Failed to query Prometheus: {str(e)}"}), 500
 
 @app.route('/api/metrics/range', methods=['GET'])
 def get_metrics_range():
