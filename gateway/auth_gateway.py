@@ -12,6 +12,11 @@ import os
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
+# OTLP Protobuf imports
+from opentelemetry.proto.collector.metrics.v1.metrics_service_pb2 import ExportMetricsServiceRequest
+from opentelemetry.proto.collector.logs.v1.logs_service_pb2 import ExportLogsServiceRequest
+from opentelemetry.proto.common.v1.common_pb2 import KeyValue, AnyValue
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -77,7 +82,7 @@ def validate_api_key(api_key: str) -> dict:
         conn.close()
 
 def inject_tenant_attribute(data: dict, tenant_id: str) -> dict:
-    """Inject tenant_id into all resource spans"""
+    """Inject tenant_id into all resource spans (JSON format)"""
     if 'resourceSpans' in data:
         for resource_span in data['resourceSpans']:
             if 'resource' not in resource_span:
@@ -92,8 +97,51 @@ def inject_tenant_attribute(data: dict, tenant_id: str) -> dict:
             })
     return data
 
+def inject_tenant_to_logs_protobuf(payload: bytes, tenant_id: str) -> bytes:
+    """Inject tenant_id into OTLP logs (Protobuf format)"""
+    try:
+        request = ExportLogsServiceRequest()
+        request.ParseFromString(payload)
+        
+        # Inject tenant_id into each resource
+        for resource_log in request.resource_logs:
+            # Create tenant_id attribute
+            tenant_attr = KeyValue(
+                key='tenant_id',
+                value=AnyValue(string_value=tenant_id)
+            )
+            resource_log.resource.attributes.append(tenant_attr)
+        
+        return request.SerializeToString()
+    except Exception as e:
+        logger.error(f"Failed to parse/inject tenant_id into logs protobuf: {e}")
+        return payload
+
+def inject_tenant_to_metrics_protobuf(payload: bytes, tenant_id: str) -> bytes:
+    """Inject tenant_id into OTLP metrics (Protobuf format)"""
+    try:
+        request = ExportMetricsServiceRequest()
+        request.ParseFromString(payload)
+        
+        logger.debug(f"Parsed metrics protobuf: {len(request.resource_metrics)} resource_metrics")
+        
+        # Inject tenant_id into each resource
+        for resource_metric in request.resource_metrics:
+            # Create tenant_id attribute
+            tenant_attr = KeyValue(
+                key='tenant_id',
+                value=AnyValue(string_value=tenant_id)
+            )
+            resource_metric.resource.attributes.append(tenant_attr)
+        
+        logger.debug(f"Injected tenant_id={tenant_id} into {len(request.resource_metrics)} resource_metrics")
+        return request.SerializeToString()
+    except Exception as e:
+        logger.error(f"Failed to parse/inject tenant_id into metrics protobuf: {e}")
+        return payload
+
 def inject_tenant_to_logs(data: dict, tenant_id: str) -> dict:
-    """Inject tenant_id into log records"""
+    """Inject tenant_id into log records (JSON format)"""
     if 'resourceLogs' in data:
         for resource_log in data['resourceLogs']:
             if 'resource' not in resource_log:
@@ -108,7 +156,7 @@ def inject_tenant_to_logs(data: dict, tenant_id: str) -> dict:
     return data
 
 def inject_tenant_to_metrics(data: dict, tenant_id: str) -> dict:
-    """Inject tenant_id into metrics"""
+    """Inject tenant_id into metrics (JSON format)"""
     if 'resourceMetrics' in data:
         for resource_metric in data['resourceMetrics']:
             if 'resource' not in resource_metric:
@@ -166,7 +214,7 @@ def traces_proxy():
 
 @app.route('/v1/logs', methods=['POST'])
 def logs_proxy():
-    """Proxy logs with authentication"""
+    """Proxy logs with authentication - supports JSON and Protobuf"""
     api_key = request.headers.get('X-API-Key')
     
     if not api_key:
@@ -177,21 +225,36 @@ def logs_proxy():
         return {'error': 'Invalid API key'}, 401
     
     try:
-        data = request.get_json()
-        data = inject_tenant_to_logs(data, tenant_info['tenant_id'])
+        content_type = request.headers.get('Content-Type', 'application/json')
         
-        response = requests.post(
-            f"{OTEL_COLLECTOR_URL}/v1/logs",
-            json=data,
-            headers={'Content-Type': 'application/json'},
-            timeout=10
-        )
+        # Handle Protobuf format
+        if 'protobuf' in content_type:
+            payload = request.get_data()
+            modified_payload = inject_tenant_to_logs_protobuf(payload, tenant_info['tenant_id'])
+            
+            response = requests.post(
+                f"{OTEL_COLLECTOR_URL}/v1/logs",
+                data=modified_payload,
+                headers={'Content-Type': content_type},
+                timeout=10
+            )
+        # Handle JSON format
+        else:
+            data = request.get_json()
+            data = inject_tenant_to_logs(data, tenant_info['tenant_id'])
+            
+            response = requests.post(
+                f"{OTEL_COLLECTOR_URL}/v1/logs",
+                json=data,
+                headers={'Content-Type': 'application/json'},
+                timeout=10
+            )
         
-        logger.info(f"Logs forwarded for tenant: {tenant_info['tenant_id']}")
+        logger.info(f"Logs forwarded for tenant: {tenant_info['tenant_id']} - Status: {response.status_code}")
         return Response(
             response.content,
             status=response.status_code,
-            content_type='application/json'
+            content_type=content_type
         )
     except Exception as e:
         logger.error(f"Failed to forward logs: {e}")
@@ -199,7 +262,7 @@ def logs_proxy():
 
 @app.route('/v1/metrics', methods=['POST'])
 def metrics_proxy():
-    """Proxy metrics with authentication"""
+    """Proxy metrics with authentication - supports JSON and Protobuf"""
     api_key = request.headers.get('X-API-Key')
     
     if not api_key:
@@ -210,21 +273,39 @@ def metrics_proxy():
         return {'error': 'Invalid API key'}, 401
     
     try:
-        data = request.get_json()
-        data = inject_tenant_to_metrics(data, tenant_info['tenant_id'])
+        content_type = request.headers.get('Content-Type', 'application/json')
+        logger.info(f"Received metrics with Content-Type: {content_type}")
         
-        response = requests.post(
-            f"{OTEL_COLLECTOR_URL}/v1/metrics",
-            json=data,
-            headers={'Content-Type': 'application/json'},
-            timeout=10
-        )
+        # Handle Protobuf format
+        if 'protobuf' in content_type:
+            logger.info("Using Protobuf parsing path")
+            payload = request.get_data()
+            modified_payload = inject_tenant_to_metrics_protobuf(payload, tenant_info['tenant_id'])
+            
+            response = requests.post(
+                f"{OTEL_COLLECTOR_URL}/v1/metrics",
+                data=modified_payload,
+                headers={'Content-Type': content_type},
+                timeout=10
+            )
+        # Handle JSON format
+        else:
+            logger.info("Using JSON parsing path")
+            data = request.get_json()
+            data = inject_tenant_to_metrics(data, tenant_info['tenant_id'])
+            
+            response = requests.post(
+                f"{OTEL_COLLECTOR_URL}/v1/metrics",
+                json=data,
+                headers={'Content-Type': 'application/json'},
+                timeout=10
+            )
         
-        logger.info(f"Metrics forwarded for tenant: {tenant_info['tenant_id']}")
+        logger.info(f"Metrics forwarded for tenant: {tenant_info['tenant_id']} - Status: {response.status_code}")
         return Response(
             response.content,
             status=response.status_code,
-            content_type='application/json'
+            content_type=content_type
         )
     except Exception as e:
         logger.error(f"Failed to forward metrics: {e}")

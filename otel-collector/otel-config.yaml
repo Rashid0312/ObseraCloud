@@ -21,6 +21,12 @@ processors:
       - key: collector.name
         value: obsera-collector
         action: upsert
+      - key: loki.resource.labels
+        value: tenant_id
+        action: upsert
+
+
+
 
 exporters:
   # Traces to Tempo
@@ -34,6 +40,15 @@ exporters:
     endpoint: http://loki:3100/otlp
     tls:
       insecure: true
+    headers:
+      X-Scope-OrgID: "fake"
+
+    
+  # Metrics exposed for Prometheus scraping
+  prometheus:
+    endpoint: "0.0.0.0:8889"
+    resource_to_telemetry_conversion:
+      enabled: true
 
   # Debug output
   debug:
@@ -60,7 +75,7 @@ service:
     metrics:
       receivers: [otlp]
       processors: [memory_limiter, batch, resource]
-      exporters: [debug]
+      exporters: [prometheus, debug]
 
   telemetry:
     logs:

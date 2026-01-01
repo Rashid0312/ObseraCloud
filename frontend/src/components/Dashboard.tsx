@@ -90,17 +90,16 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, onGoHome }) => {
         const logs = logsData.logs || [];
         const errorLogs = logs.filter((l: any) => l.level?.toLowerCase() === 'error');
         const metrics = metricsData.metrics || [];
-        const responseTimes = metrics.filter((m: any) => m.metric_name === 'http_response_time_seconds');
 
-        const avgTime = responseTimes.length > 0
-          ? responseTimes.reduce((acc: number, m: any) => acc + parseFloat(m.value?.split('=')[1] || m.value || 0), 0) / responseTimes.length
-          : 0;
+        // Calculate total requests from http_requests_total metric
+        const requestMetrics = metrics.filter((m: any) => m.metric_name === 'http_requests_total');
+        const totalRequests = requestMetrics.reduce((sum: number, m: any) => sum + parseFloat(m.value || 0), 0);
 
         setStats({
           totalLogs: logs.length,
           errorCount: errorLogs.length,
           errorRate: logs.length > 0 ? (errorLogs.length / logs.length * 100) : 0,
-          avgResponseTime: avgTime * 1000,
+          avgResponseTime: 0, // Will be calculated from duration metrics when available
           activeTraces: tracesData.count || 0
         });
       } catch (err) {

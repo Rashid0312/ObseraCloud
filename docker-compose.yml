@@ -176,6 +176,7 @@ services:
     ports:
       - "4317:4317"
       - "4318:4318"
+      - "8889:8889"  # Prometheus exporter endpoint
       - "13133:13133"
     depends_on:
       - tempo
