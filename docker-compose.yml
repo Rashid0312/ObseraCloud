@@ -106,7 +106,7 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - ./backend/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus-data:/prometheus
     networks:
       - obsera-net
@@ -119,7 +119,7 @@ services:
     ports:
       - "3100:3100"
     volumes:
-      - ./backend/loki-config.yaml:/etc/loki/loki-config.yaml
+      - ./loki/loki-config.yaml:/etc/loki/loki-config.yaml
       - loki-data:/loki
     networks:
       - obsera-net
@@ -176,6 +176,7 @@ services:
     ports:
       - "4317:4317"
       - "4318:4318"
+      - "8889:8889"  # Prometheus exporter endpoint
       - "13133:13133"
     depends_on:
       - tempo
