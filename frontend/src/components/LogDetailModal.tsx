@@ -171,6 +171,116 @@ const LogDetailModal: React.FC<LogDetailModalProps> = ({ log, tenantId, onClose 
         }
     };
 
+    // Parse log message if it looks like headers/key-value pairs
+    const parseStructuredMessage = (msg: string) => {
+        const lines = msg.split('\n');
+        const structured: Record<string, string> = {};
+        let currentKey = '';
+
+        lines.forEach(line => {
+            if (line.includes(':') && !line.startsWith(' ')) {
+                const [key, ...val] = line.split(':');
+                currentKey = key.trim().toLowerCase();
+                structured[currentKey] = val.join(':').trim();
+            } else if (currentKey && line.trim()) {
+                structured[currentKey] += ' ' + line.trim();
+            }
+        });
+
+        // If we extracted a decent number of keys, return it, otherwise null
+        return Object.keys(structured).length > 3 ? structured : null;
+    };
+
+    const structuredData = parseStructuredMessage(log.message);
+
+    // Helper to render known interesting fields
+    const renderMetadataSection = (data: Record<string, string>) => {
+        // Group fields
+        const geo = {
+            city: data['x_vercel_ip_city'],
+            country: data['x_vercel_ip_country'],
+            ip: data['x_forwarded_for'] || data['x_real_ip'],
+        };
+
+        const client = {
+            ua: data['user_agent'] || data['useragent'],
+            platform: data['sec_ch_ua_platform'],
+            mobile: data['sec_ch_ua_mobile'] === '?1' ? 'Mobile' : 'Desktop'
+        };
+
+        const req = {
+            method: data['method'],
+            url: data['url'],
+            host: data['host'],
+            traceId: data['traceid'] || data['trace_id'],
+            tenant: data['tenant_id'],
+        };
+
+        return (
+            <div className="log-structured-view">
+                {/* 1. Request Context */}
+                {(req.method || req.url) && (
+                    <div className="structured-section">
+                        <h4>Request</h4>
+                        <div className="structured-grid">
+                            <div className="structured-item">
+                                <span className="label">Method</span>
+                                <span className={`value-badge ${req.method?.toLowerCase() || 'unknown'}`}>{req.method || 'GET'}</span>
+                            </div>
+                            <div className="structured-item span-2">
+                                <span className="label">URL</span>
+                                <span className="value">{req.url}</span>
+                            </div>
+                            {req.host && (
+                                <div className="structured-item">
+                                    <span className="label">Host</span>
+                                    <span className="value">{req.host}</span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* 2. User/Client Context */}
+                {(geo.country || client.ua) && (
+                    <div className="structured-section">
+                        <h4>Client & Location</h4>
+                        <div className="structured-grid">
+                            {geo.country && (
+                                <div className="structured-item">
+                                    <span className="label">Location</span>
+                                    <span className="value">
+                                        {geo.city ? `${geo.city}, ` : ''}{geo.country}
+                                        {geo.ip && <span className="sub-value">({geo.ip})</span>}
+                                    </span>
+                                </div>
+                            )}
+                            {client.ua && (
+                                <div className="structured-item span-2">
+                                    <span className="label">Device</span>
+                                    <span className="value">{client.ua}</span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* 3. Raw Headers (Collapsible) */}
+                <details className="raw-headers-details">
+                    <summary>View All Headers ({Object.keys(data).length})</summary>
+                    <div className="raw-headers-grid">
+                        {Object.entries(data).map(([k, v]) => (
+                            <div key={k} className="raw-header-row">
+                                <span className="header-key">{k}:</span>
+                                <span className="header-value">{v}</span>
+                            </div>
+                        ))}
+                    </div>
+                </details>
+            </div>
+        );
+    };
+
     return (
         <div className="log-modal-overlay" onClick={onClose}>
             <div className="log-modal-content" onClick={(e) => e.stopPropagation()}>
@@ -181,6 +291,9 @@ const LogDetailModal: React.FC<LogDetailModalProps> = ({ log, tenantId, onClose 
                             {log.level.toUpperCase()}
                         </span>
                         <span className="log-service">{log.service}</span>
+                        <span className="log-time-header">
+                            {new Date(parseInt(log.timestamp) / 1000000).toLocaleTimeString()}
+                        </span>
                     </div>
                     <button className="log-modal-close" onClick={onClose}>
                         <X size={20} />
@@ -189,6 +302,17 @@ const LogDetailModal: React.FC<LogDetailModalProps> = ({ log, tenantId, onClose 
 
                 {/* Log Details */}
                 <div className="log-modal-body">
+                    {/* Render Structured Data or Raw Message */}
+                    {structuredData ? (
+                        renderMetadataSection(structuredData)
+                    ) : (
+                        <div className="log-message-section">
+                            <h4>Message</h4>
+                            <pre className="log-message-content">{log.message}</pre>
+                        </div>
+                    )}
+
+                    {/* Metadata Grid (if not parsed from message) */}
                     <div className="log-detail-grid">
                         <div className="log-detail-item">
                             <Clock size={14} />
@@ -200,18 +324,6 @@ const LogDetailModal: React.FC<LogDetailModalProps> = ({ log, tenantId, onClose 
                             <span className="log-detail-label">Service</span>
                             <span className="log-detail-value">{log.service}</span>
                         </div>
-                        {log.endpoint && (
-                            <div className="log-detail-item">
-                                <Tag size={14} />
-                                <span className="log-detail-label">Endpoint</span>
-                                <span className="log-detail-value">{log.method} {log.endpoint}</span>
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="log-message-section">
-                        <h4>Message</h4>
-                        <pre className="log-message-content">{log.message}</pre>
                     </div>
 
                     {/* AI Debug Section - Only for errors */}
