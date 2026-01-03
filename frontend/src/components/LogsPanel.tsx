@@ -230,10 +230,12 @@ const LogsPanel: React.FC<LogsPanelProps> = ({ tenantId, refreshKey, compact, on
                     <div className="obs-log-details-section">
                       <h4>Metadata</h4>
                       <div className="obs-log-metadata">
+                        {/* Always show timestamp */}
                         <div className="obs-metadata-item">
                           <span className="obs-metadata-key">Timestamp:</span>
                           <span className="obs-metadata-value">{log.timestamp}</span>
                         </div>
+
                         {/* Clickable Trace ID for cross-telemetry correlation */}
                         {(log.trace_id || log.labels?.trace_id) && (
                           <div className="obs-metadata-item obs-trace-link">
@@ -253,12 +255,41 @@ const LogsPanel: React.FC<LogsPanelProps> = ({ tenantId, refreshKey, compact, on
                             </button>
                           </div>
                         )}
-                        {Object.entries(log.labels).filter(([key]) => key !== 'trace_id').map(([key, value]) => (
-                          <div key={key} className="obs-metadata-item">
-                            <span className="obs-metadata-key">{key}:</span>
-                            <span className="obs-metadata-value">{value}</span>
-                          </div>
-                        ))}
+
+                        {/* Filtered labels - show only useful ones */}
+                        {(() => {
+                          // List of noisy headers to hide
+                          const HIDDEN_KEYS = new Set([
+                            'trace_id', 'traceid', 'accept', 'accept_encoding', 'accept_language',
+                            'connection', 'content_length', 'content_type', 'cookie',
+                            'sec_ch_ua', 'sec_ch_ua_mobile', 'sec_ch_ua_platform',
+                            'sec_fetch_dest', 'sec_fetch_mode', 'sec_fetch_site',
+                            'upgrade_insecure_requests', 'cache_control', 'pragma',
+                            'collector_name', 'loki_resource_labels', 'priority',
+                            'x_vercel_deployment_url', 'x_vercel_id', 'x_vercel_ja4_fingerprint',
+                            'x_vercel_proxied_for', 'x_vercel_sc_headers', 'x_vercel_trace',
+                            'x_vercel_proxy_signature', 'x_vercel_proxy_signature_ts',
+                            'x_vercel_oidc_token', 'x_vercel_internal_bot_check',
+                            'x_vercel_internal_ingress_bucket', 'x_vercel_internal_ingress_port',
+                            'x_matched_path', 'x_real_ip', 'forwarded', 'x_forwarded_proto',
+                            'x_forwarded_host', 'x_forwarded_port', 'x_forwarded_for',
+                            'x_vercel_forwarded_for', 'x_vercel_function_path',
+                            'x_vercel_ip_as_number', 'x_vercel_ip_continent', 'x_vercel_ip_latitude',
+                            'x_vercel_ip_longitude', 'x_vercel_ip_postal_code', 'x_vercel_ip_timezone',
+                            'referer', 'origin', 'user_agent', 'useragent', 'detected_level',
+                            'severity_text', 'x_vercel_ja4_digest', 'x_vercel_ip_country_region'
+                          ]);
+
+                          const visibleLabels = Object.entries(log.labels || {})
+                            .filter(([key]) => !HIDDEN_KEYS.has(key.toLowerCase()));
+
+                          return visibleLabels.map(([key, value]) => (
+                            <div key={key} className="obs-metadata-item">
+                              <span className="obs-metadata-key">{key}:</span>
+                              <span className="obs-metadata-value">{value}</span>
+                            </div>
+                          ));
+                        })()}
                       </div>
                     </div>
 
