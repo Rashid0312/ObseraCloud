@@ -844,9 +844,10 @@ def correlate_telemetry(trace_id):
     except Exception as e:
         logger.warning(f"Failed to get trace from Tempo: {e}")
     
-    # 2. Get related logs from Loki
+    # 2. Get related logs from Loki - search all jobs for this tenant
     try:
-        loki_query = f'{{job=~"demo-app|traces-app", tenant_id="{tenant_id}"}} |= "{trace_id}"'
+        # Don't filter by job - any log with matching trace_id should correlate
+        loki_query = f'{{tenant_id="{tenant_id}"}} |= "{trace_id}"'
         
         loki_response = requests.get(
             f"{LOKI_URL}/loki/api/v1/query_range",
