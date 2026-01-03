@@ -195,88 +195,101 @@ const LogDetailModal: React.FC<LogDetailModalProps> = ({ log, tenantId, onClose 
 
     // Helper to render known interesting fields
     const renderMetadataSection = (data: Record<string, string>) => {
-        // Group fields
-        const geo = {
-            city: data['x_vercel_ip_city'],
-            country: data['x_vercel_ip_country'],
-            ip: data['x_forwarded_for'] || data['x_real_ip'],
+        // ---- NOISE FILTER: Headers that are meaningless to end users ----
+        const HIDDEN_HEADERS = new Set([
+            'accept', 'accept_encoding', 'accept_language', 'connection',
+            'content_length', 'content_type', 'cookie', 'sec_ch_ua',
+            'sec_ch_ua_mobile', 'sec_ch_ua_platform', 'sec_fetch_dest',
+            'sec_fetch_mode', 'sec_fetch_site', 'upgrade_insecure_requests',
+            'cache_control', 'pragma', 'if_none_match', 'if_modified_since',
+            'collector_name', 'loki_resource_labels', 'priority',
+            'x_vercel_deployment_url', 'x_vercel_id', 'x_vercel_ja4_fingerprint',
+            'x_vercel_proxied_for', 'x_vercel_sc_headers', 'x_vercel_trace',
+            'x_matched_path', 'x_real_ip', 'x_vercel_proxy_signature',
+            'x_vercel_proxy_signature_ts', 'forwarded', 'x_forwarded_proto',
+            'x_forwarded_host', 'x_forwarded_port', 'referer', 'origin',
+        ]);
+
+        // ---- EXTRACT USEFUL INFO ----
+        const summary = {
+            message: data['body'] || data['message'] || data['msg'] || null,
+            method: data['method'] || null,
+            path: data['path'] || data['url'] || data['endpoint'] || null,
+            status: data['status'] || data['status_code'] || null,
+            host: data['host'] || null,
+            city: data['x_vercel_ip_city'] || null,
+            country: data['x_vercel_ip_country'] || null,
+            traceId: data['traceid'] || data['trace_id'] || null,
         };
 
-        const client = {
-            ua: data['user_agent'] || data['useragent'],
-            platform: data['sec_ch_ua_platform'],
-            mobile: data['sec_ch_ua_mobile'] === '?1' ? 'Mobile' : 'Desktop'
-        };
-
-        const req = {
-            method: data['method'],
-            url: data['url'],
-            host: data['host'],
-            traceId: data['traceid'] || data['trace_id'],
-            tenant: data['tenant_id'],
-        };
+        // Filter out hidden and already-shown headers for "other" section
+        const otherHeaders = Object.entries(data).filter(([key]) => {
+            const k = key.toLowerCase();
+            return !HIDDEN_HEADERS.has(k) &&
+                !['body', 'message', 'msg', 'method', 'path', 'url', 'endpoint',
+                    'status', 'status_code', 'host', 'x_vercel_ip_city',
+                    'x_vercel_ip_country', 'traceid', 'trace_id', 'detected_level'].includes(k);
+        });
 
         return (
             <div className="log-structured-view">
-                {/* 1. Request Context */}
-                {(req.method || req.url) && (
-                    <div className="structured-section">
-                        <h4>Request</h4>
-                        <div className="structured-grid">
-                            <div className="structured-item">
-                                <span className="label">Method</span>
-                                <span className={`value-badge ${req.method?.toLowerCase() || 'unknown'}`}>{req.method || 'GET'}</span>
-                            </div>
-                            <div className="structured-item span-2">
-                                <span className="label">URL</span>
-                                <span className="value">{req.url}</span>
-                            </div>
-                            {req.host && (
-                                <div className="structured-item">
-                                    <span className="label">Host</span>
-                                    <span className="value">{req.host}</span>
-                                </div>
-                            )}
-                        </div>
+                {/* Primary Summary Card */}
+                {(summary.method || summary.path) && (
+                    <div className="log-summary-card">
+                        {summary.method && (
+                            <span className={`method-badge ${summary.method.toLowerCase()}`}>
+                                {summary.method}
+                            </span>
+                        )}
+                        <span className="summary-path">{summary.path || '/'}</span>
+                        {summary.status && (
+                            <span className={`status-badge ${parseInt(summary.status) < 400 ? 'success' : 'error'}`}>
+                                {summary.status}
+                            </span>
+                        )}
                     </div>
                 )}
 
-                {/* 2. User/Client Context */}
-                {(geo.country || client.ua) && (
-                    <div className="structured-section">
-                        <h4>Client & Location</h4>
-                        <div className="structured-grid">
-                            {geo.country && (
-                                <div className="structured-item">
-                                    <span className="label">Location</span>
-                                    <span className="value">
-                                        {geo.city ? `${geo.city}, ` : ''}{geo.country}
-                                        {geo.ip && <span className="sub-value">({geo.ip})</span>}
-                                    </span>
-                                </div>
-                            )}
-                            {client.ua && (
-                                <div className="structured-item span-2">
-                                    <span className="label">Device</span>
-                                    <span className="value">{client.ua}</span>
-                                </div>
-                            )}
-                        </div>
+                {/* Message/Body if present */}
+                {summary.message && (
+                    <div className="log-message-box">
+                        <pre>{summary.message}</pre>
                     </div>
                 )}
 
-                {/* 3. Raw Headers (Collapsible) */}
-                <details className="raw-headers-details">
-                    <summary>View All Headers ({Object.keys(data).length})</summary>
-                    <div className="raw-headers-grid">
-                        {Object.entries(data).map(([k, v]) => (
-                            <div key={k} className="raw-header-row">
-                                <span className="header-key">{k}:</span>
-                                <span className="header-value">{v}</span>
-                            </div>
-                        ))}
-                    </div>
-                </details>
+                {/* Context Pills */}
+                <div className="log-context-pills">
+                    {summary.host && (
+                        <span className="context-pill">
+                            <Server size={12} /> {summary.host}
+                        </span>
+                    )}
+                    {(summary.city || summary.country) && (
+                        <span className="context-pill">
+                            🌍 {summary.city ? `${summary.city}, ` : ''}{summary.country}
+                        </span>
+                    )}
+                    {summary.traceId && (
+                        <span className="context-pill trace">
+                            <Tag size={12} /> {summary.traceId.slice(0, 8)}...
+                        </span>
+                    )}
+                </div>
+
+                {/* Other Fields (collapsed by default) */}
+                {otherHeaders.length > 0 && (
+                    <details className="raw-headers-details">
+                        <summary>Additional Details ({otherHeaders.length})</summary>
+                        <div className="raw-headers-grid">
+                            {otherHeaders.map(([k, v]) => (
+                                <div key={k} className="raw-header-row">
+                                    <span className="header-key">{k}:</span>
+                                    <span className="header-value">{String(v).slice(0, 100)}{String(v).length > 100 ? '...' : ''}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </details>
+                )}
             </div>
         );
     };
