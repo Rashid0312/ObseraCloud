@@ -75,6 +75,21 @@
 - Alert grouping and noise reduction
 - **Value:** Key enterprise requirement
 
+### Phase 2: Business Metrics support
+### Planning Phase
+- [x] Explore SkyView architecture and understand ingestion patterns
+- [x] Review auth gateway for API key validation flow
+- [x] Create implementation plan for TournamentV3 instrumentation
+- [x] Phase 2: Design dynamic business metrics visualization
+
+### Execution Phase
+- [x] Document OpenTelemetry configuration for Node.js + Express backend
+- [x] Document frontend instrumentation with @opentelemetry/web
+- [x] Provide environment variable configuration
+- [x] Create sample instrumentation code
+- [ ] Implement dynamic metric discovery in MetricsChart.tsx
+- [ ] Update client documentation with business metric examples
+
 ### [ ] Integrations & Ingestion
 - Easy OpenTelemetry SDK integration guides
 - Pre-built agents for common frameworks (Node, Python, Go, Java)

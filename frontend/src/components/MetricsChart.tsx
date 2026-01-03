@@ -666,6 +666,80 @@ const MetricsChart: React.FC<MetricsChartProps> = ({ tenantId, refreshKey }) => 
           )}
         </div>
       </div>
+
+      {/* Custom/Business Metrics Section */}
+      {Object.keys(metricsByName)
+        .filter(name => !['http_requests_total', 'http_errors_total', 'http_response_time_seconds', 'up', 'scrape_duration_seconds', 'scrape_samples_scraped', 'scrape_series_added', 'scrape_samples_post_metric_relabeling'].includes(name))
+        .length > 0 && (
+          <div className="obs-metrics-section">
+            <h4 className="obs-section-title">Business Metrics</h4>
+            <div className="obs-metrics-charts">
+              {Object.keys(metricsByName)
+                .filter(name => !['http_requests_total', 'http_errors_total', 'http_response_time_seconds', 'up', 'scrape_duration_seconds', 'scrape_samples_scraped', 'scrape_series_added', 'scrape_samples_post_metric_relabeling'].includes(name))
+                .sort()
+                .map(metricName => {
+                  const data = prepareChartData(metricName);
+                  if (data.length === 0) return null;
+
+                  // Heuristic: _total or _count usually means counters (Bar), others are gauges (Area)
+                  const isCounter = metricName.endsWith('_total') || metricName.endsWith('_count');
+                  const lastValue = data[data.length - 1]?.value || 0;
+                  const totalValue = data.reduce((sum, d) => sum + d.value, 0);
+
+                  return (
+                    <div className="obs-chart-container" key={metricName}>
+                      <div className="obs-chart-header">
+                        <h4>{metricName.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</h4>
+                        <span className="obs-chart-subtitle">
+                          {isCounter ? `Total: ${Math.round(totalValue)}` : `Last: ${typeof lastValue === 'number' ? lastValue.toFixed(2) : lastValue}`}
+                        </span>
+                      </div>
+                      <ResponsiveContainer width="100%" height={200}>
+                        {isCounter ? (
+                          <BarChart data={data}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 12%, 20%)" vertical={false} />
+                            <XAxis dataKey="time" stroke="hsl(220, 10%, 45%)" fontSize={11} tickLine={false} />
+                            <YAxis stroke="hsl(220, 10%, 45%)" fontSize={11} tickLine={false} axisLine={false} />
+                            <Tooltip
+                              contentStyle={{
+                                backgroundColor: 'hsl(220, 15%, 10%)',
+                                borderColor: 'hsl(140, 70%, 50%)',
+                                borderRadius: '8px'
+                              }}
+                              formatter={(val: number) => [val, 'Count']}
+                            />
+                            <Bar dataKey="value" fill="hsl(140, 70%, 55%)" radius={[4, 4, 0, 0]} />
+                          </BarChart>
+                        ) : (
+                          <AreaChart data={data}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 12%, 20%)" vertical={false} />
+                            <XAxis dataKey="time" stroke="hsl(220, 10%, 45%)" fontSize={11} tickLine={false} />
+                            <YAxis stroke="hsl(220, 10%, 45%)" fontSize={11} tickLine={false} axisLine={false} />
+                            <Tooltip
+                              contentStyle={{
+                                backgroundColor: 'hsl(220, 15%, 10%)',
+                                borderColor: 'hsl(280, 70%, 50%)',
+                                borderRadius: '8px'
+                              }}
+                              formatter={(val: number) => [val, 'Value']}
+                            />
+                            <Area
+                              type="monotone"
+                              dataKey="value"
+                              stroke="hsl(280, 70%, 60%)"
+                              fill="hsl(280, 70%, 60%)"
+                              fillOpacity={0.2}
+                              strokeWidth={2}
+                            />
+                          </AreaChart>
+                        )}
+                      </ResponsiveContainer>
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
+        )}
     </div>
   );
 };

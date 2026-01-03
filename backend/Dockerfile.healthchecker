@@ -1,0 +1,12 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install dependencies
+RUN pip install --no-cache-dir requests psycopg2-binary
+
+# Copy the health checker script
+COPY health_checker.py .
+
+# Run the health checker
+CMD ["python", "-u", "health_checker.py"]
