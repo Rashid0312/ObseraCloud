@@ -846,43 +846,63 @@ def correlate_telemetry(trace_id):
     
     # 2. Get related logs from Loki - search all jobs for this tenant
     try:
-        # Don't filter by job - any log with matching trace_id should correlate
-        loki_query = f'{{tenant_id="{tenant_id}"}} |= "{trace_id}"'
+        # Try multiple query strategies since traceId could be in labels or message
+        log_queries = [
+            # Strategy 1: traceId as a label (OpenTelemetry style)
+            f'{{tenant_id="{tenant_id}", traceId="{trace_id}"}}',
+            # Strategy 2: trace_id as label (underscore variant)  
+            f'{{tenant_id="{tenant_id}", trace_id="{trace_id}"}}',
+            # Strategy 3: traceId in message body (fallback)
+            f'{{tenant_id="{tenant_id}"}} |= "{trace_id}"'
+        ]
         
-        loki_response = requests.get(
-            f"{LOKI_URL}/loki/api/v1/query_range",
-            params={
-                "query": loki_query,
-                "limit": 100,
-                "start": str(int((datetime.now() - timedelta(hours=24)).timestamp() * 1e9)),
-                "end": str(int(datetime.now().timestamp() * 1e9))
-            },
-            timeout=10
-        )
+        seen_timestamps = set()  # Deduplicate across queries
         
-        if loki_response.status_code == 200:
-            data = loki_response.json()
-            for stream in data.get('data', {}).get('result', []):
-                labels = stream.get('stream', {})
-                for value in stream.get('values', []):
-                    timestamp = int(value[0])
-                    message = value[1] if len(value) > 1 else ""
-                    
-                    log_entry = {
-                        "timestamp": timestamp,
-                        "message": message,
-                        "level": labels.get('level', 'info'),
-                        "service": labels.get('service_name', ''),
-                        "trace_id": trace_id
-                    }
-                    result["logs"].append(log_entry)
-                    
-                    # Add to timeline
-                    result["timeline"].append({
-                        "type": "log",
-                        "timestamp": timestamp,
-                        "data": log_entry
-                    })
+        for loki_query in log_queries:
+            try:
+                loki_response = requests.get(
+                    f"{LOKI_URL}/loki/api/v1/query_range",
+                    params={
+                        "query": loki_query,
+                        "limit": 100,
+                        "start": str(int((datetime.now() - timedelta(hours=24)).timestamp() * 1e9)),
+                        "end": str(int(datetime.now().timestamp() * 1e9))
+                    },
+                    timeout=10
+                )
+                
+                if loki_response.status_code == 200:
+                    data = loki_response.json()
+                    for stream in data.get('data', {}).get('result', []):
+                        labels = stream.get('stream', {})
+                        for value in stream.get('values', []):
+                            timestamp = int(value[0])
+                            
+                            # Skip duplicates
+                            if timestamp in seen_timestamps:
+                                continue
+                            seen_timestamps.add(timestamp)
+                            
+                            message = value[1] if len(value) > 1 else ""
+                            
+                            log_entry = {
+                                "timestamp": timestamp,
+                                "message": message,
+                                "level": labels.get('level', labels.get('detected_level', 'info')),
+                                "service": labels.get('service_name', labels.get('service', '')),
+                                "trace_id": trace_id
+                            }
+                            result["logs"].append(log_entry)
+                            
+                            # Add to timeline
+                            result["timeline"].append({
+                                "type": "log",
+                                "timestamp": timestamp,
+                                "data": log_entry
+                            })
+            except Exception as query_err:
+                logger.debug(f"Query failed: {loki_query} - {query_err}")
+                continue
                     
     except Exception as e:
         logger.warning(f"Failed to get logs from Loki: {e}")
