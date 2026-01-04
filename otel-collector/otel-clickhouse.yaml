@@ -20,9 +20,9 @@ processors:
     error_mode: ignore
     traces:
       span:
-        - 'attributes["http.url"] matches ".*v1/traces.*"'
-        - 'attributes["http.url"] matches ".*v1/metrics.*"'
-        - 'attributes["http.url"] matches ".*v1/logs.*"'
+        - 'IsMatch(attributes["http.url"], ".*v1/traces.*")'
+        - 'IsMatch(attributes["http.url"], ".*v1/metrics.*")'
+        - 'IsMatch(attributes["http.url"], ".*v1/logs.*")'
 
   resource:
     attributes:
