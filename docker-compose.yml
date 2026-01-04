@@ -99,51 +99,7 @@ services:
     profiles:
       - production
 
-  # ===========================================
-  # OBSERVABILITY STACK
-  # ===========================================
-  prometheus:
-    image: prom/prometheus:latest
-    container_name: obsera-prometheus
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
-      - prometheus-data:/prometheus
-    networks:
-      - obsera-net
-    restart: unless-stopped
 
-  loki:
-    image: grafana/loki:latest
-    container_name: obsera-loki
-    command: -config.file=/etc/loki/loki-config.yaml
-    ports:
-      - "3100:3100"
-    volumes:
-      - ./loki/loki-config.yaml:/etc/loki/loki-config.yaml
-      - loki-data:/loki
-    networks:
-      - obsera-net
-    restart: unless-stopped
-
-  tempo:
-    image: grafana/tempo:latest
-    container_name: obsera-tempo
-    user: root
-    command: [ "-config.file=/etc/tempo/tempo-config.yaml" ]
-    ports:
-      - "3200:3200"
-      - "4320:4318"  # Tempo OTLP HTTP endpoint for direct trace ingestion
-    volumes:
-      - ./tempo/tempo-config.yaml:/etc/tempo/tempo-config.yaml
-      - tempo-data:/tmp/tempo
-    networks:
-      - obsera-net
-    restart: unless-stopped
 
   # ===========================================
   # CLICKHOUSE (New Storage Backend)
@@ -205,9 +161,7 @@ services:
       - "4318:4318"
       - "8889:8889"  # Prometheus exporter endpoint
       - "13133:13133"
-    depends_on:
-      - tempo
-      - loki
+
     networks:
       - obsera-net
     restart: unless-stopped
@@ -235,6 +189,4 @@ networks:
 
 volumes:
   postgres-data:
-  prometheus-data:
-  loki-data:
-  tempo-data:
+
