@@ -15,7 +15,7 @@ from datetime import datetime
 # Pointing to OTel Collector HTTP Receiver
 OTEL_COLLECTOR_URL = "http://46.62.229.59:4318"
 
-TENANTS = ['acme', 'globex', 'initech', 'rosetta-01']
+TENANTS = ['acme', 'globex', 'initech']
 SERVICES = ['web-app', 'api-server', 'payment-service', 'inventory-service']
 
 # ==========================================
