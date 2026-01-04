@@ -13,6 +13,7 @@ import logging
 import psycopg2
 from psycopg2.extras import RealDictCursor
 import bcrypt
+import clickhouse_client as ch # ClickHouse Client
 import secrets
 from functools import wraps
 from contextlib import nullcontext
@@ -409,9 +410,9 @@ def extract_severity_from_log(log_message: str, stream_labels: dict) -> str:
 @limiter.limit("100 per minute")  # Rate limit: 100 requests per minute
 @require_jwt
 def get_logs():
-    """Query logs from Loki for a specific tenant"""
+    """Query logs from ClickHouse for a specific tenant"""
     tenant_id = request.args.get('tenant_id')
-    limit = request.args.get('limit', '100')
+    limit = int(request.args.get('limit', '100'))
     level = request.args.get('level', '')
     
     # Input validation
@@ -427,65 +428,50 @@ def get_logs():
     if not is_valid:
         return error_response
 
-    
-    if level:
-        logql_query = f'{{service_name=~".+"}} | tenant_id="{tenant_id}" | severity_text="{level.upper()}"'
-    else:
-        logql_query = f'{{service_name=~".+"}} | tenant_id="{tenant_id}"'
-    
     end_time = datetime.now()
     start_time = end_time - timedelta(hours=hours)
     
     try:
-        response = requests.get(
-            f"{LOKI_URL}/loki/api/v1/query_range",
-            params={
-                "query": logql_query,
-                "limit": limit,
-                "start": int(start_time.timestamp() * 1e9),
-                "end": int(end_time.timestamp() * 1e9)
-            },
-            timeout=10
+        # Use ClickHouse Client
+        db_logs = ch.get_logs(
+            tenant_id=tenant_id,
+            severity=level,
+            start_time=start_time,
+            end_time=end_time,
+            limit=limit
         )
-        response.raise_for_status()
         
-        data = response.json()
+        # Transform for Frontend (keep consistent format)
         logs = []
-        
-        for stream in data.get('data', {}).get('result', []):
-            stream_labels = stream.get('stream', {})
-            for value in stream.get('values', []):
-                timestamp_ns = int(value[0])
-                # Convert to UTC+1 (CET) for display
-                utc_dt = datetime.fromtimestamp(timestamp_ns / 1e9, tz=timezone.utc)
-                local_dt = utc_dt + timedelta(hours=1)  # UTC+1
-                timestamp_readable = local_dt.strftime('%Y-%m-%dT%H:%M:%S.%f')
-                
-                logs.append({
-                    "timestamp": timestamp_readable,
-                    "timestamp_ns": timestamp_ns,
-                    "message": value[1],
-                    "level": extract_severity_from_log(value[1], stream_labels),
-                    "service": stream_labels.get('service_name', 'unknown'),
-                    "labels": stream_labels
-                })
-        
-        logs.sort(key=lambda x: x['timestamp_ns'], reverse=True)
-        
-        logger.info(f"Retrieved {len(logs)} logs for tenant: {tenant_id}")
+        for row in db_logs:
+            # ClickHouse returns datetime objects
+            timestamp_dt = row['Timestamp']
+            # Convert to ISO string usually expected by frontend
+            # The previous implementation expected UTC+1 adjustment, let's keep it if needed or trust the brower
+            # The previous code did: local_dt = utc_dt + timedelta(hours=1)
+            # We will use the timestamp as is from DB (which is stored as DateTime64)
+            
+            logs.append({
+                "timestamp": timestamp_dt.isoformat(),
+                "timestamp_ns": int(timestamp_dt.timestamp() * 1e9),
+                "message": row['Body'],
+                "level": row['SeverityText'],
+                "service": row['ServiceName'],
+                "labels": row['LogAttributes'] or {},
+                "trace_id": row['TraceId']
+            })
+            
+        logger.info(f"Retrieved {len(logs)} logs from ClickHouse for tenant: {tenant_id}")
         return jsonify({
             "tenant_id": tenant_id,
             "logs": logs,
             "count": len(logs),
-            "query": logql_query
+            "source": "clickhouse"
         }), 200
         
-    except requests.exceptions.ConnectionError:
-        logger.error(f"Cannot connect to Loki at {LOKI_URL}")
-        return jsonify({"error": "Loki service unavailable"}), 503
-    except requests.RequestException as e:
-        logger.error(f"Loki query failed for {tenant_id}: {str(e)}")
-        return jsonify({"error": f"Failed to query Loki: {str(e)}"}), 500
+    except Exception as e:
+        logger.error(f"ClickHouse query failed for {tenant_id}: {str(e)}")
+        return jsonify({"error": f"Failed to query logs: {str(e)}"}), 500
 
 # ==================== METRICS (PROMETHEUS) ====================
 
@@ -493,7 +479,7 @@ def get_logs():
 @limiter.limit("100 per minute")
 @require_jwt
 def get_metrics():
-    """Query metrics from Prometheus and convert to frontend format"""
+    """Query metrics from ClickHouse"""
     tenant_id = request.args.get('tenant_id')
     metric_name = request.args.get('metric', '')
     hours = float(request.args.get('hours', '1'))
@@ -506,75 +492,51 @@ def get_metrics():
     if not is_valid:
         return error_response
 
-    
-    # Query only http_requests_total to keep payload small and fast
-    # This is the primary metric the frontend charts need
-    promql_query = f'http_requests_total{{tenant_id="{tenant_id}"}}'
+    # Default to http_requests_total if not specified
+    if not metric_name:
+        metric_name = 'http_requests_total'
+
     end_time = datetime.now()
     start_time = end_time - timedelta(hours=hours)
     
-    # Calculate appropriate step size based on time range
-    if hours <= 1:
-        step = "30s"  # 1 hour = 120 points
-    elif hours <= 6:
-        step = "3m"   # 6 hours = 120 points
-    else:
-        step = "10m"  # 24 hours = 144 points
-    
     try:
-        response = requests.get(
-            f"{PROMETHEUS_URL}/api/v1/query_range",
-            params={
-                "query": promql_query,
-                "start": start_time.timestamp(),
-                "end": end_time.timestamp(),
-                "step": step
-            },
-            timeout=10
+        # Use ClickHouse Client (Points are pre-aggregated by OTel Collector usually or raw)
+        # We query the raw points for now
+        points = ch.get_metrics_sum(
+            tenant_id=tenant_id,
+            metric_name=metric_name,
+            start_time=start_time,
+            end_time=end_time
         )
-        response.raise_for_status()
         
-        data = response.json()
-        logger.info(f"DEBUG: Prometheus response status={response.status_code}, result_count={len(data.get('data', {}).get('result', []))}")
         metrics = []
-        
-        # Convert Prometheus format to frontend format
-        for result in data.get('data', {}).get('result', []):
-            metric_labels = result.get('metric', {})
-            metric_name_from_data = metric_labels.get('__name__', 'unknown')
+        for point in points:
+            # Convert to UTC+1 (CET) for display as per original logic
+            ts = point['TimestampUnix']
+            utc_dt = datetime.fromtimestamp(ts, tz=timezone.utc)
+            local_dt = utc_dt + timedelta(hours=1)
             
-            for value in result.get('values', []):
-                timestamp_unix = float(value[0])
-                metric_value = value[1]
-                
-                # Convert to UTC+1 (CET) for display
-                utc_dt = datetime.fromtimestamp(timestamp_unix, tz=timezone.utc)
-                local_dt = utc_dt + timedelta(hours=1)
-                
-                metrics.append({
-                    "timestamp": local_dt.strftime('%Y-%m-%dT%H:%M:%S'),
-                    "metric_name": metric_name_from_data,
-                    "value": metric_value,
-                    "labels": metric_labels
-                })
-        
+            metrics.append({
+                "timestamp": local_dt.strftime('%Y-%m-%dT%H:%M:%S'),
+                "metric_name": metric_name,
+                "value": point['Value'],
+                "labels": point['Attributes'] or {}
+            })
+            
         # Sort by timestamp descending
         metrics.sort(key=lambda x: x['timestamp'], reverse=True)
         
-        logger.info(f"Retrieved {len(metrics)} metrics for tenant: {tenant_id}")
+        logger.info(f"Retrieved {len(metrics)} metrics from ClickHouse for tenant: {tenant_id}")
         return jsonify({
             "tenant_id": tenant_id,
             "metrics": metrics,
             "count": len(metrics),
-            "query": promql_query
+            "source": "clickhouse"
         }), 200
         
-    except requests.exceptions.ConnectionError:
-        logger.error(f"Cannot connect to Prometheus at {PROMETHEUS_URL}")
-        return jsonify({"error": "Prometheus service unavailable"}), 503
-    except requests.RequestException as e:
-        logger.error(f"Prometheus query failed: {str(e)}")
-        return jsonify({"error": f"Failed to query Prometheus: {str(e)}"}), 500
+    except Exception as e:
+        logger.error(f"ClickHouse metric query failed: {str(e)}")
+        return jsonify({"error": f"Failed to query metrics: {str(e)}"}), 500
 
 @app.route('/api/metrics/range', methods=['GET'])
 def get_metrics_range():
@@ -628,9 +590,9 @@ def get_metrics_range():
 @limiter.limit("100 per minute")
 @require_jwt
 def get_traces():
-    """Query traces from Tempo with multi-tenant filtering"""
+    """Query traces from ClickHouse"""
     tenant_id = request.args.get('tenant_id')
-    limit = request.args.get('limit', '20')
+    limit = int(request.args.get('limit', '20'))
     hours = float(request.args.get('hours', '24'))
     
     if not tenant_id:
@@ -641,86 +603,41 @@ def get_traces():
     if not is_valid:
         return error_response
 
-    
-    # Check cache for consistent results (Tempo search is non-deterministic)
-    cache_key = f"{tenant_id}_{hours}"
-    cache_ttl = 30  # Cache for 30 seconds for consistent sorting
-    
-    if cache_key in _trace_cache:
-        cached = _trace_cache[cache_key]
-        if time.time() - cached["timestamp"] < cache_ttl:
-            # Return cached results (sliced to requested limit)
-            cached_traces = cached["traces"][:int(limit)]
-            logger.info(f"Returning {len(cached_traces)} cached traces for tenant: {tenant_id}")
-            return jsonify({
-                "tenant_id": tenant_id,
-                "traces": cached_traces,
-                "count": len(cached_traces),
-                "source": "tempo-cached"
-            }), 200
-    
+    end_time = datetime.now()
+    start_time = end_time - timedelta(hours=hours)
+
     try:
-        # Query Tempo with TraceQL filtering by tenant_id for multi-tenancy isolation
-        # TraceQL filters traces where any span has the tenant_id attribute
-        traceql_query = f'{{ resource.tenant_id = "{tenant_id}" }}'
-        logger.info(f"DEBUG: Querying Tempo: {traceql_query} at {TEMPO_URL}/api/search")
-        
-        response = requests.get(
-            f"{TEMPO_URL}/api/search",
-            params={
-                "q": traceql_query,
-                "limit": 100,  # Fetch more traces than needed for consistent sorting
-                "start": int((datetime.now() - timedelta(hours=hours)).timestamp()),
-                "end": int(datetime.now().timestamp())
-            },
-            timeout=10
+        # CLICKHOUSE: No cache needed! deterministic results.
+        traces = ch.get_traces(
+            tenant_id=tenant_id,
+            start_time=start_time,
+            end_time=end_time,
+            limit=limit
         )
-        logger.info(f"DEBUG: Tempo Response: {response.status_code} - {response.text[:200]}")
         
-        if response.status_code == 200:
-            data = response.json()
-            traces = []
+        # Mapping to frontend format
+        result_traces = []
+        for t in traces:
+            result_traces.append({
+                "traceID": t['TraceId'],
+                "rootTraceName": t['RootTraceName'],
+                "rootServiceName": t['RootServiceName'],
+                "startTimeUnixNano": str(t['StartTimeUnixNano']),
+                "durationMs": t['DurationNano'] / 1_000_000,
+                "status": t['StatusCode']
+            })
             
-            for trace in data.get('traces', []):
-                traces.append({
-                    "traceID": trace.get('traceID', 'unknown'),
-                    "rootTraceName": trace.get('rootTraceName', 'unknown'),
-                    "rootServiceName": trace.get('rootServiceName', ''),
-                    "startTimeUnixNano": trace.get('startTimeUnixNano', '0'),
-                    "durationMs": trace.get('durationMs', 0),
-                    "status": "OK"
-                })
-            
-            # Sort by timestamp - newest first
-            traces.sort(key=lambda x: int(x.get('startTimeUnixNano', 0)), reverse=True)
-            
-            # Save ALL sorted traces to cache BEFORE slicing
-            _trace_cache[cache_key] = {
-                "traces": traces,  # Store all 100 sorted traces
-                "timestamp": time.time()
-            }
-            
-            # Limit to requested amount AFTER sorting for consistent results
-            requested_limit = int(limit)
-            traces = traces[:requested_limit]
-            
-            logger.info(f"Retrieved {len(traces)} traces from Tempo for tenant: {tenant_id}")
-            return jsonify({
-                "tenant_id": tenant_id,
-                "traces": traces,
-                "count": len(traces),
-                "source": "tempo"
-            }), 200
-        else:
-            # Fallback to Loki for backward compatibility
-            return get_traces_from_loki(tenant_id, limit)
-            
-    except requests.exceptions.ConnectionError:
-        logger.warning(f"Tempo unavailable, falling back to Loki")
-        return get_traces_from_loki(tenant_id, limit)
+        logger.info(f"Retrieved {len(result_traces)} traces from ClickHouse for tenant: {tenant_id}")
+        return jsonify({
+            "tenant_id": tenant_id,
+            "traces": result_traces,
+            "count": len(result_traces),
+            "source": "clickhouse"
+        }), 200
+        
     except Exception as e:
-        logger.error(f"Tempo query failed: {str(e)}")
-        return get_traces_from_loki(tenant_id, limit)
+        logger.error(f"ClickHouse trace query failed: {str(e)}")
+        return jsonify({"error": f"Failed to query traces: {str(e)}"}), 500
 
 def get_traces_from_loki(tenant_id, limit):
     """Fallback: Query traces from Loki"""
@@ -771,63 +688,52 @@ def get_traces_from_loki(tenant_id, limit):
 @app.route('/api/traces/<trace_id>', methods=['GET'])
 @limiter.limit("100 per minute")
 def get_trace_detail(trace_id):
-    """Get detailed trace with all spans from Tempo"""
+    """Get detailed trace with all spans from ClickHouse"""
     try:
-        response = requests.get(
-            f"{TEMPO_URL}/api/traces/{trace_id}",
-            timeout=10
-        )
+        # Fetch spans from ClickHouse
+        db_spans = ch.get_trace_spans(trace_id)
         
-        if response.status_code == 200:
-            data = response.json()
-            
-            # Parse trace into span hierarchy
-            spans = []
-            for batch in data.get('batches', []):
-                resource = batch.get('resource', {})
-                service_name = "unknown"
-                for attr in resource.get('attributes', []):
-                    if attr.get('key') == 'service.name':
-                        service_name = attr.get('value', {}).get('stringValue', 'unknown')
-                
-                for scope_span in batch.get('scopeSpans', []):
-                    for span in scope_span.get('spans', []):
-                        start_ns = int(span.get('startTimeUnixNano', 0))
-                        end_ns = int(span.get('endTimeUnixNano', 0))
-                        duration_ms = (end_ns - start_ns) / 1_000_000
-                        
-                        spans.append({
-                            "spanId": span.get('spanId', ''),
-                            "parentSpanId": span.get('parentSpanId', ''),
-                            "operationName": span.get('name', 'unknown'),
-                            "serviceName": service_name,
-                            "startTimeUnixNano": str(start_ns),
-                            "durationMs": round(duration_ms, 2),
-                            "status": "OK" if span.get('status', {}).get('code', 1) == 1 else "ERROR"
-                        })
-            
-            # Sort by start time to build hierarchy
-            spans.sort(key=lambda x: int(x['startTimeUnixNano']))
-            
-            return jsonify({
-                "traceId": trace_id,
-                "spans": spans,
-                "spanCount": len(spans)
-            }), 200
-        else:
+        if not db_spans:
             return jsonify({"error": "Trace not found"}), 404
+
+        spans = []
+        for span in db_spans:
+            start_ns = int(span['StartTimeUnixNano'])
+            end_ns = int(span['EndTimeUnixNano'])
+            duration_ms = (end_ns - start_ns) / 1_000_000
+            
+            # Helper to map OTel status to string if it's not already
+            status_raw = span['StatusCode']
+            status = status_raw if isinstance(status_raw, str) else "OK"
+            
+            spans.append({
+                "spanId": span['SpanId'],
+                "parentSpanId": span['ParentSpanId'],
+                "operationName": span['Name'],
+                "serviceName": span['ServiceName'],
+                "startTimeUnixNano": str(start_ns),
+                "durationMs": round(duration_ms, 2),
+                "status": status,
+                "attributes": span['SpanAttributes'] or {}
+            })
+            
+        return jsonify({
+            "traceId": trace_id,
+            "spans": spans,
+            "spanCount": len(spans)
+        }), 200
             
     except Exception as e:
-        logger.error(f"Failed to get trace detail: {str(e)}")
+        logger.error(f"Failed to get trace detail from ClickHouse: {str(e)}")
         return jsonify({"error": f"Failed to get trace: {str(e)}"}), 500
 
 @app.route('/api/traces/search', methods=['GET'])
 def search_traces():
-    """Search traces by trace_id or service"""
+    """Search traces by trace_id or service in ClickHouse"""
     tenant_id = request.args.get('tenant_id')
     trace_id = request.args.get('trace_id')
     service = request.args.get('service', 'demo-app')
-    limit = request.args.get('limit', '20')
+    limit = int(request.args.get('limit', '20'))
     
     if not tenant_id:
         return jsonify({"error": "tenant_id required"}), 400
@@ -835,44 +741,67 @@ def search_traces():
     if not validate_tenant(tenant_id):
         return jsonify({"error": "Invalid or inactive tenant"}), 403
     
-    search_params = {"limit": limit}
-    
-    if trace_id:
-        try:
-            response = requests.get(
-                f"{TEMPO_URL}/api/traces/{trace_id}",
-                timeout=10
-            )
-            response.raise_for_status()
-            return jsonify(response.json()), 200
-        except requests.RequestException as e:
-            return jsonify({"error": f"Trace not found: {str(e)}"}), 404
-    else:
-        search_params["tags"] = f"service.name={service}"
-    
     try:
-        response = requests.get(
-            f"{TEMPO_URL}/api/search",
-            params=search_params,
-            timeout=10
-        )
-        response.raise_for_status()
+        if trace_id:
+            # Direct Trace ID lookup
+            spans = ch.get_trace_spans(trace_id)
+            if spans:
+                # Format as a list of traces (frontend expects this structure for search)
+                # But search_traces usually returns a SUMMARY list, not detail.
+                # However, if trace_id is specific, we might return the detail
+                # The original code returned tempo/api/traces/{id} structure which is detail.
+                # Let's reuse get_trace_detail logic or redirect?
+                # Actually, the frontend calls this when you search for a specific ID in the search bar.
+                # It expects the same format as get_traces (list) or get_trace_detail (object)?
+                # The original code: return jsonify(response.json()) -> returns Tempo Trace format.
+                
+                # Let's return a list with 1 trace summary
+                # We need to find the root span or just first span
+                root_span = next((s for s in spans if s['ParentSpanId'] == ''), spans[0])
+                
+                return jsonify({
+                    "traces": [{
+                        "traceID": trace_id,
+                        "rootTraceName": root_span['Name'],
+                        "rootServiceName": root_span['ServiceName'],
+                        "startTimeUnixNano": str(root_span['StartTimeUnixNano']),
+                        "durationMs": root_span['DurationNano'] / 1_000_000,
+                        "status": root_span['StatusCode']
+                    }]
+                }), 200
+            else:
+                 return jsonify({"error": "Trace not found"}), 404
+        else:
+            # Search by Service
+            traces = ch.get_traces(
+                tenant_id=tenant_id,
+                service_name=service,
+                limit=limit
+            )
+            
+            result_traces = []
+            for t in traces:
+                result_traces.append({
+                    "traceID": t['TraceId'],
+                    "rootTraceName": t['RootTraceName'],
+                    "rootServiceName": t['RootServiceName'],
+                    "startTimeUnixNano": str(t['StartTimeUnixNano']),
+                    "durationMs": t['DurationNano'] / 1_000_000,
+                    "status": t['StatusCode']
+                })
+            
+            return jsonify({"traces": result_traces}), 200
         
-        return jsonify(response.json()), 200
-        
-    except requests.exceptions.ConnectionError:
-        logger.error(f"Cannot connect to Tempo at {TEMPO_URL}")
-        return jsonify({"error": "Tempo service unavailable"}), 503
-    except requests.RequestException as e:
-        logger.error(f"Tempo search failed: {str(e)}")
-        return jsonify({"error": f"Tempo search failed: {str(e)}"}), 500
+    except Exception as e:
+        logger.error(f"ClickHouse search failed: {str(e)}")
+        return jsonify({"error": f"Search failed: {str(e)}"}), 500
 
 # ==================== CROSS-TELEMETRY CORRELATION ====================
 
 @app.route('/api/correlate/<trace_id>', methods=['GET'])
 @limiter.limit("60 per minute")
 def correlate_telemetry(trace_id):
-    """Get all correlated telemetry (trace, logs, metrics) for a trace_id"""
+    """Get all correlated telemetry (trace, logs, metrics) for a trace_id using ClickHouse"""
     tenant_id = request.args.get('tenant_id')
     
     if not tenant_id:
@@ -890,183 +819,126 @@ def correlate_telemetry(trace_id):
         "timeline": []
     }
     
-    trace_start_time = None
-    trace_end_time = None
-    
-    # 1. Get trace from Tempo
     try:
-        tempo_response = requests.get(
-            f"{TEMPO_URL}/api/traces/{trace_id}",
-            timeout=10
-        )
+        # 1. Get trace spans
+        db_spans = ch.get_trace_spans(trace_id)
+        if not db_spans:
+             return jsonify({"error": "Trace not found"}), 404
+             
+        # Extract time range from spans
+        start_ns = min(int(s['StartTimeUnixNano']) for s in db_spans)
+        end_ns = max(int(s['EndTimeUnixNano']) for s in db_spans)
+        trace_duration_ms = (end_ns - start_ns) / 1_000_000
         
-        if tempo_response.status_code == 200:
-            trace_data = tempo_response.json()
+        # Format trace object
+        spans = []
+        for span in db_spans:
+            s_start = int(span['StartTimeUnixNano'])
+            s_end = int(span['EndTimeUnixNano'])
+            spans.append({
+                "spanId": span['SpanId'],
+                "name": span['Name'],
+                "startTime": s_start,
+                "endTime": s_end,
+                "duration_ms": (s_end - s_start) / 1_000_000,
+                "status": span['StatusCode'],
+                "attributes": span['SpanAttributes'] or {}
+            })
             
-            # Extract spans and find time range
-            spans = []
-            for batch in trace_data.get('batches', []):
-                resource = batch.get('resource', {})
-                for scope_span in batch.get('scopeSpans', []):
-                    for span in scope_span.get('spans', []):
-                        span_start = int(span.get('startTimeUnixNano', 0))
-                        span_end = int(span.get('endTimeUnixNano', 0))
-                        
-                        if trace_start_time is None or span_start < trace_start_time:
-                            trace_start_time = span_start
-                        if trace_end_time is None or span_end > trace_end_time:
-                            trace_end_time = span_end
-                        
-                        spans.append({
-                            "spanId": span.get('spanId', ''),
-                            "parentSpanId": span.get('parentSpanId', ''),
-                            "name": span.get('name', ''),
-                            "startTime": span_start,
-                            "endTime": span_end,
-                            "duration_ms": (span_end - span_start) / 1_000_000 if span_end and span_start else 0,
-                            "status": span.get('status', {}).get('code', 0),
-                            "attributes": {attr['key']: attr.get('value', {}).get('stringValue', attr.get('value', {}).get('intValue', '')) 
-                                          for attr in span.get('attributes', [])}
-                        })
-                        
-                        # Add to timeline
-                        result["timeline"].append({
-                            "type": "span",
-                            "timestamp": span_start,
-                            "data": {
-                                "name": span.get('name', ''),
-                                "duration_ms": (span_end - span_start) / 1_000_000 if span_end and span_start else 0,
-                                "status": "error" if span.get('status', {}).get('code', 0) == 2 else "ok"
-                            }
-                        })
+            # Add spans to timeline
+            result["timeline"].append({
+                "type": "span",
+                "timestamp": s_start,
+                "data": {
+                    "name": span['Name'],
+                    "duration_ms": (s_end - s_start) / 1_000_000,
+                    "status": "error" if span['StatusCode'] == "ERROR" else "ok"
+                }
+            })
             
-            result["trace"] = {
-                "traceId": trace_id,
-                "spans": spans,
-                "spanCount": len(spans),
-                "duration_ms": (trace_end_time - trace_start_time) / 1_000_000 if trace_end_time and trace_start_time else 0
+        result["trace"] = {
+            "traceId": trace_id,
+            "spans": spans,
+            "spanCount": len(spans),
+            "duration_ms": trace_duration_ms
+        }
+        
+        # 2. Get Logs (Correlated by Trace ID - Trivial in CH)
+        # We can also search by time range and service as fallback, but TraceID is best.
+        # ClickHouse otel_logs has TraceId column.
+        log_query = """
+            SELECT Timestamp, SeverityText, Body, ServiceName, TraceId
+            FROM otel_logs
+            WHERE TraceId = %(trace_id)s
+            ORDER BY Timestamp ASC
+        """
+        logs = ch.execute_query(log_query, {'trace_id': trace_id})
+        
+        for log in logs:
+            ts_ns = int(log['Timestamp'].timestamp() * 1e9)
+            log_entry = {
+                "timestamp": ts_ns,
+                "message": log['Body'],
+                "level": log['SeverityText'],
+                "service": log['ServiceName'],
+                "trace_id": log['TraceId']
             }
+            result["logs"].append(log_entry)
+            result["timeline"].append({
+                "type": "log",
+                "timestamp": ts_ns,
+                "data": log_entry
+            })
+            
+        # 3. Get Metrics (Range based correlation)
+        # Fetch metrics for the tenant within the trace duration
+        start_dt = datetime.fromtimestamp(start_ns / 1e9)
+        end_dt = datetime.fromtimestamp(end_ns / 1e9)
+        
+        # Expand window slightly
+        start_window = start_dt - timedelta(seconds=10)
+        end_window = end_dt + timedelta(seconds=10)
+        
+        metrics = ch.execute_query("""
+            SELECT Timestamp, MetricName, Value, ResourceAttributes
+            FROM otel_metrics_sum
+            WHERE ResourceAttributes['tenant_id'] = %(tenant_id)s
+              AND Timestamp BETWEEN %(start)s AND %(end)s
+            LIMIT 50
+        """, {
+            'tenant_id': tenant_id, 
+            'start': start_window, 
+            'end': end_window
+        })
+        
+        for m in metrics:
+            ts_ns = int(m['Timestamp'].timestamp() * 1e9)
+            metric_entry = {
+                "timestamp": ts_ns,
+                "name": m['MetricName'],
+                "value": m['Value'],
+                "service": m['ResourceAttributes'].get('service_name', '')
+            }
+            result["metrics"].append(metric_entry)
+            result["timeline"].append({
+                "type": "metric",
+                "timestamp": ts_ns,
+                "data": metric_entry
+            })
             
     except Exception as e:
-        logger.warning(f"Failed to get trace from Tempo: {e}")
-    
-    # 2. Get related logs from Loki - search all jobs for this tenant
-    try:
-        # Try multiple query strategies since traceId could be in labels or message
-        log_queries = [
-            # Strategy 1: traceId as a label (OpenTelemetry style)
-            f'{{tenant_id="{tenant_id}", traceId="{trace_id}"}}',
-            # Strategy 2: trace_id as label (underscore variant)  
-            f'{{tenant_id="{tenant_id}", trace_id="{trace_id}"}}',
-            # Strategy 3: traceId in message body (fallback)
-            f'{{tenant_id="{tenant_id}"}} |= "{trace_id}"'
-        ]
+        logger.error(f"Correlation failed: {e}")
+        # Partial result is better than error
         
-        seen_timestamps = set()  # Deduplicate across queries
-        
-        for loki_query in log_queries:
-            try:
-                loki_response = requests.get(
-                    f"{LOKI_URL}/loki/api/v1/query_range",
-                    params={
-                        "query": loki_query,
-                        "limit": 100,
-                        "start": str(int((datetime.now() - timedelta(hours=24)).timestamp() * 1e9)),
-                        "end": str(int(datetime.now().timestamp() * 1e9))
-                    },
-                    timeout=10
-                )
-                
-                if loki_response.status_code == 200:
-                    data = loki_response.json()
-                    for stream in data.get('data', {}).get('result', []):
-                        labels = stream.get('stream', {})
-                        for value in stream.get('values', []):
-                            timestamp = int(value[0])
-                            
-                            # Skip duplicates
-                            if timestamp in seen_timestamps:
-                                continue
-                            seen_timestamps.add(timestamp)
-                            
-                            message = value[1] if len(value) > 1 else ""
-                            
-                            log_entry = {
-                                "timestamp": timestamp,
-                                "message": message,
-                                "level": labels.get('level', labels.get('detected_level', 'info')),
-                                "service": labels.get('service_name', labels.get('service', '')),
-                                "trace_id": trace_id
-                            }
-                            result["logs"].append(log_entry)
-                            
-                            # Add to timeline
-                            result["timeline"].append({
-                                "type": "log",
-                                "timestamp": timestamp,
-                                "data": log_entry
-                            })
-            except Exception as query_err:
-                logger.debug(f"Query failed: {loki_query} - {query_err}")
-                continue
-                    
-    except Exception as e:
-        logger.warning(f"Failed to get logs from Loki: {e}")
-    
-    # 3. Get related metrics (if we have trace time range)
-    if trace_start_time and trace_end_time:
-        try:
-            # Extend time range slightly for context
-            start_ns = trace_start_time - (60 * 1e9)  # 1 min before
-            end_ns = trace_end_time + (60 * 1e9)  # 1 min after
-            
-            metrics_query = f'{{job="metrics-app", tenant_id="{tenant_id}"}}'
-            
-            metrics_response = requests.get(
-                f"{LOKI_URL}/loki/api/v1/query_range",
-                params={
-                    "query": metrics_query,
-                    "limit": 50,
-                    "start": str(int(start_ns)),
-                    "end": str(int(end_ns))
-                },
-                timeout=10
-            )
-            
-            if metrics_response.status_code == 200:
-                data = metrics_response.json()
-                for stream in data.get('data', {}).get('result', []):
-                    labels = stream.get('stream', {})
-                    for value in stream.get('values', []):
-                        timestamp = int(value[0])
-                        metric_value = value[1] if len(value) > 1 else ""
-                        
-                        metric_entry = {
-                            "timestamp": timestamp,
-                            "name": labels.get('metric_name', 'unknown'),
-                            "value": metric_value,
-                            "service": labels.get('service_name', '')
-                        }
-                        result["metrics"].append(metric_entry)
-                        
-                        # Add to timeline
-                        result["timeline"].append({
-                            "type": "metric",
-                            "timestamp": timestamp,
-                            "data": metric_entry
-                        })
-                        
-        except Exception as e:
-            logger.warning(f"Failed to get metrics from Loki: {e}")
-    
-    # Sort timeline by timestamp
+    # Sort timeline
     result["timeline"].sort(key=lambda x: x["timestamp"])
     
-    # Convert timestamps to relative times from trace start
-    if trace_start_time:
+    # Calculate relative time
+    if result["timeline"]:
+        start_time = result["timeline"][0]["timestamp"]
         for item in result["timeline"]:
-            item["relative_ms"] = (item["timestamp"] - trace_start_time) / 1_000_000
-    
+            item["relative_ms"] = (item["timestamp"] - start_time) / 1_000_000
+            
     return jsonify(result), 200
 
 # ==================== HEALTH CHECK ====================
@@ -1076,7 +948,7 @@ def health():
     """Health check endpoint with service status"""
     services_status = {}
     
-    # Check Database
+    # Check Postgres
     try:
         conn = get_db_connection()
         if conn:
@@ -1087,26 +959,16 @@ def health():
     except:
         services_status['database'] = {'status': 'unavailable'}
     
-    # Check Loki
+    # Check ClickHouse
     try:
-        requests.get(f"{LOKI_URL}/ready", timeout=2)
-        services_status['loki'] = {'url': LOKI_URL, 'status': 'healthy'}
-    except:
-        services_status['loki'] = {'url': LOKI_URL, 'status': 'unavailable'}
-    
-    # Check Prometheus
-    try:
-        requests.get(f"{PROMETHEUS_URL}/-/healthy", timeout=2)
-        services_status['prometheus'] = {'url': PROMETHEUS_URL, 'status': 'healthy'}
-    except:
-        services_status['prometheus'] = {'url': PROMETHEUS_URL, 'status': 'unavailable'}
-    
-    # Check Tempo
-    try:
-        requests.get(f"{TEMPO_URL}/ready", timeout=2)
-        services_status['tempo'] = {'url': TEMPO_URL, 'status': 'healthy'}
-    except:
-        services_status['tempo'] = {'url': TEMPO_URL, 'status': 'unavailable'}
+        if ch.get_client():
+            # Run simple query
+            ch.execute_query("SELECT 1")
+            services_status['clickhouse'] = {'status': 'healthy'}
+        else:
+             services_status['clickhouse'] = {'status': 'unavailable'}
+    except Exception as e:
+        services_status['clickhouse'] = {'status': 'unavailable', 'error': str(e)}
     
     return jsonify({
         "status": "healthy",

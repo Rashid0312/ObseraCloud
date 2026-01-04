@@ -40,9 +40,9 @@ ssh root@46.62.229.59 << EOF
     echo "⬇️  Pulling latest code..."
     git pull origin main
     
-    echo "🔨 Rebuilding Frontend Container..."
+    echo "🔨 Rebuilding Services..."
     # Using 'docker compose' (v2) as confirmed on server
-    docker compose up -d --build frontend
+    docker compose up -d --build --remove-orphans
     
     echo "✨ Server deployment successful!"
 EOF

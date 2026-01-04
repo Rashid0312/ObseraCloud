@@ -46,10 +46,18 @@ services:
       - TEMPO_URL=${TEMPO_URL:-http://tempo:3200}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - CLICKHOUSE_HOST=clickhouse
+      - CLICKHOUSE_PORT=8123
+      - CLICKHOUSE_USER=default
+      - CLICKHOUSE_PASSWORD=password
     depends_on:
       postgres:
         condition: service_healthy
+      clickhouse:
+        condition: service_started
     networks:
       - obsera-net
     restart: unless-stopped
@@ -141,6 +149,28 @@ services:
     restart: unless-stopped
 
   # ===========================================
+  # CLICKHOUSE (New Storage Backend)
+  # ===========================================
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    container_name: obsera-clickhouse
+    ports:
+      - "8123:8123" # HTTP Port
+      - "9000:9000" # TCP Port
+    volumes:
+      - ./clickhouse/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    environment:
+      - CLICKHOUSE_USER=default
+      - CLICKHOUSE_PASSWORD=password
+    networks:
+      - obsera-net
+    restart: unless-stopped
+
+  # ===========================================
   # OTLP GATEWAY & COLLECTOR
   # ===========================================
   auth-gateway:
@@ -170,9 +200,9 @@ services:
   otel-collector:
     image: otel/opentelemetry-collector-contrib:latest
     container_name: obsera-otel-collector
-    command: ["--config=/etc/otel-collector-config.yaml"]
+    command: ["--config=/etc/otel-collector-clickhouse.yaml"]
     volumes:
-      - ./otel-collector/otel-config.yaml:/etc/otel-collector-config.yaml
+      - ./otel-collector/otel-clickhouse.yaml:/etc/otel-collector-clickhouse.yaml
     ports:
       - "4317:4317"
       - "4318:4318"
