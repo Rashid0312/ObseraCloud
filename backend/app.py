@@ -333,6 +333,76 @@ def validate_tenant(tenant_id):
     finally:
         conn.close()
 
+def map_otel_severity_to_level(severity_number: int) -> str:
+    """
+    Map OpenTelemetry SeverityNumber to log level text.
+    Reference: https://opentelemetry.io/docs/specs/otel/logs/data-model/#field-severitynumber
+    
+    Severity ranges:
+    1-4:   TRACE
+    5-8:   DEBUG  
+    9-12:  INFO
+    13-16: WARN
+    17-20: ERROR
+    21-24: FATAL
+    """
+    if severity_number is None:
+        return 'INFO'
+    if severity_number <= 4:
+        return 'TRACE'
+    elif severity_number <= 8:
+        return 'DEBUG'
+    elif severity_number <= 12:
+        return 'INFO'
+    elif severity_number <= 16:
+        return 'WARN'
+    elif severity_number <= 20:
+        return 'ERROR'
+    else:
+        return 'FATAL'
+
+def extract_severity_from_log(log_message: str, stream_labels: dict) -> str:
+    """
+    Extract severity level from log message or labels.
+    Tries multiple sources: stream labels, JSON body, keywords in message.
+    """
+    # First try stream labels
+    if 'level' in stream_labels:
+        return stream_labels['level'].upper()
+    if 'severity_text' in stream_labels:
+        return stream_labels['severity_text'].upper()
+    
+    # Try parsing JSON log body for severity_number or severity_text
+    try:
+        import json
+        log_data = json.loads(log_message)
+        
+        # Check for severity_text first
+        if 'severity_text' in log_data:
+            return log_data['severity_text'].upper()
+        if 'severityText' in log_data:
+            return log_data['severityText'].upper()
+        if 'level' in log_data:
+            return log_data['level'].upper()
+            
+        # Check for severity_number
+        severity_num = log_data.get('severity_number') or log_data.get('severityNumber') or log_data.get('SeverityNumber')
+        if severity_num is not None:
+            return map_otel_severity_to_level(int(severity_num))
+    except (json.JSONDecodeError, ValueError, TypeError):
+        pass
+    
+    # Fallback: Check message content for error indicators
+    upper_msg = log_message.upper()
+    if 'ERROR' in upper_msg or 'EXCEPTION' in upper_msg or 'FAILED' in upper_msg:
+        return 'ERROR'
+    elif 'WARN' in upper_msg:
+        return 'WARN'
+    elif 'DEBUG' in upper_msg:
+        return 'DEBUG'
+    
+    return 'INFO'
+
 # ==================== LOGS (LOKI) ====================
 
 @app.route('/api/logs', methods=['GET'])
@@ -395,7 +465,7 @@ def get_logs():
                     "timestamp": timestamp_readable,
                     "timestamp_ns": timestamp_ns,
                     "message": value[1],
-                    "level": stream_labels.get('level', 'INFO'),
+                    "level": extract_severity_from_log(value[1], stream_labels),
                     "service": stream_labels.get('service_name', 'unknown'),
                     "labels": stream_labels
                 })
