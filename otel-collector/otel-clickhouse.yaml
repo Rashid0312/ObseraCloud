@@ -26,25 +26,7 @@ processors:
         action: upsert
 
 exporters:
-  # ==================================
-  # LEGACY STACK (Keep for side-by-side)
-  # ==================================
-  otlphttp/tempo:
-    endpoint: http://tempo:4318
-    tls:
-      insecure: true
 
-  otlphttp/loki:
-    endpoint: http://loki:3100/otlp
-    tls:
-      insecure: true
-    headers:
-      X-Scope-OrgID: "fake"
-
-  prometheus:
-    endpoint: "0.0.0.0:8889"
-    resource_to_telemetry_conversion:
-      enabled: true
 
   # ==================================
   # NEW: CLICKHOUSE EXPORTER
@@ -79,14 +61,14 @@ service:
     traces:
       receivers: [otlp]
       processors: [memory_limiter, batch, resource]
-      exporters: [otlphttp/tempo, clickhouse]  # DUAL WRITE
+      exporters: [clickhouse]  # SINGLE WRITE
     
     logs:
       receivers: [otlp]
       processors: [memory_limiter, batch, resource]
-      exporters: [otlphttp/loki, clickhouse]   # DUAL WRITE
+      exporters: [clickhouse]   # SINGLE WRITE
     
     metrics:
       receivers: [otlp]
       processors: [memory_limiter, batch, resource]
-      exporters: [prometheus, clickhouse, debug]       # DUAL WRITE
+      exporters: [clickhouse, debug]       # SINGLE WRITE
