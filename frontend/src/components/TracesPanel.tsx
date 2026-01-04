@@ -222,6 +222,15 @@ const TracesPanel: React.FC<TracesPanelProps> = ({ tenantId, refreshKey, highlig
     return Math.min((ms / maxMs) * 100, 100);
   };
 
+  const getServiceClass = (name: string): string => {
+    const lower = name.toLowerCase();
+    if (lower.includes('front') || lower.includes('ui') || lower.includes('react')) return 'service-frontend';
+    if (lower.includes('back') || lower.includes('api') || lower.includes('server')) return 'service-backend';
+    if (lower.includes('db') || lower.includes('sql') || lower.includes('mongo') || lower.includes('postgres')) return 'service-database';
+    if (lower.includes('gate') || lower.includes('proxy') || lower.includes('auth')) return 'service-gateway';
+    return '';
+  };
+
   // Build span hierarchy tree
   const buildSpanTree = (spans: Span[]): { span: Span; children: any[]; depth: number }[] => {
     const spanMap = new Map<string, { span: Span; children: any[] }>();
@@ -339,7 +348,9 @@ const TracesPanel: React.FC<TracesPanelProps> = ({ tenantId, refreshKey, highlig
                     <span className="obs-trace-operation">{trace.rootTraceName}</span>
                     <div className="obs-trace-meta">
                       <code className="obs-trace-id">{trace.traceID.substring(0, 16)}</code>
-                      <span className="obs-trace-service">{trace.rootServiceName}</span>
+                      <span className={`obs-trace-service ${getServiceClass(trace.rootServiceName)}`}>
+                        {trace.rootServiceName}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -403,7 +414,9 @@ const TracesPanel: React.FC<TracesPanelProps> = ({ tenantId, refreshKey, highlig
                               <div className="obs-span-content">
                                 <div className="obs-span-header">
                                   <Server size={12} className="obs-span-icon" />
-                                  <span className="obs-span-service">{item.span.serviceName}</span>
+                                  <span className={`obs-trace-service ${getServiceClass(item.span.serviceName)}`}>
+                                    {item.span.serviceName}
+                                  </span>
                                   <span className="obs-span-operation">{item.span.operationName}</span>
                                   <span className={`obs-span-status ${isSpanError ? 'error' : 'ok'}`}>
                                     {isSpanError ? '✗' : '✓'}

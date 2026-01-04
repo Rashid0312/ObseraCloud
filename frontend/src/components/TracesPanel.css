@@ -252,9 +252,38 @@
 }
 
 .obs-trace-service {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: hsl(220 20% 15%);
   color: hsl(220 30% 80%);
-  font-weight: 500;
+  border: 1px solid hsl(220 25% 25%);
+}
+
+.service-frontend {
+  background: hsl(210 80% 50% / 0.15);
+  color: hsl(210 90% 75%);
+  border-color: hsl(210 80% 50% / 0.3);
+}
+
+.service-backend {
+  background: hsl(270 80% 55% / 0.15);
+  color: hsl(270 90% 80%);
+  border-color: hsl(270 80% 55% / 0.3);
+}
+
+.service-database,
+.service-db {
+  background: hsl(30 90% 50% / 0.15);
+  color: hsl(30 100% 70%);
+  border-color: hsl(30 90% 50% / 0.3);
+}
+
+.service-gateway {
+  background: hsl(150 70% 45% / 0.15);
+  color: hsl(150 70% 60%);
+  border-color: hsl(150 70% 45% / 0.3);
 }
 
 .obs-trace-timing {
