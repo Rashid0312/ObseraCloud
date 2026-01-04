@@ -49,7 +49,15 @@ const LogsPanel: React.FC<LogsPanelProps> = ({ tenantId, refreshKey, compact, on
       try {
         const hours = parseFloat(timeRange);
         const url = `${API_BASE_URL}/api/logs?tenant_id=${tenantId}&limit=${compact ? 10 : 100}&hours=${hours}${filter ? `&level=${filter.toLowerCase()}` : ''}`;
-        const response = await fetch(url);
+
+        // Include JWT token for authentication
+        const token = localStorage.getItem('token');
+        const headers: HeadersInit = {};
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        const response = await fetch(url, { headers });
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));

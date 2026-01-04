@@ -144,6 +144,30 @@ def sanitize_input(value, max_length=100, pattern=r'^[a-zA-Z0-9_-]+$'):
         return None
     return value
 
+def verify_tenant_access(requested_tenant_id):
+    """
+    SECURITY: Verify the authenticated user has access to the requested tenant_id.
+    Returns tuple (is_valid, error_response)
+    """
+    # Check if we have an authenticated tenant from JWT
+    authenticated_tenant = getattr(g, 'tenant_id', None)
+    
+    if not authenticated_tenant:
+        # No JWT auth - fallback to just validating tenant exists (legacy behavior)
+        # This allows unauthenticated dashboard access for demo purposes
+        return validate_tenant(requested_tenant_id), None
+    
+    # CRITICAL: Verify the requested tenant matches the authenticated user
+    if requested_tenant_id != authenticated_tenant:
+        logger.warning(f"SECURITY: Tenant {authenticated_tenant} attempted to access {requested_tenant_id}")
+        return False, jsonify({"error": "Access denied: You can only access your own tenant data"}), 403
+    
+    # Validate the tenant is active
+    if not validate_tenant(requested_tenant_id):
+        return False, jsonify({"error": "Invalid or inactive tenant"}), 403
+    
+    return True, None
+
 # ==================== DATABASE CONNECTION ====================
 
 def get_db_connection():
@@ -313,6 +337,7 @@ def validate_tenant(tenant_id):
 
 @app.route('/api/logs', methods=['GET'])
 @limiter.limit("100 per minute")  # Rate limit: 100 requests per minute
+@require_jwt
 def get_logs():
     """Query logs from Loki for a specific tenant"""
     tenant_id = request.args.get('tenant_id')
@@ -327,8 +352,11 @@ def get_logs():
     if not tenant_id:
         return jsonify({"error": "tenant_id query parameter required"}), 400
     
-    if not validate_tenant(tenant_id):
-        return jsonify({"error": "Invalid or inactive tenant"}), 403
+    # SECURITY: Verify authenticated user can access this tenant
+    is_valid, error_response = verify_tenant_access(tenant_id)
+    if not is_valid:
+        return error_response
+
     
     if level:
         logql_query = f'{{service_name=~".+"}} | tenant_id="{tenant_id}" | severity_text="{level.upper()}"'
@@ -393,6 +421,7 @@ def get_logs():
 
 @app.route('/api/metrics', methods=['GET'])
 @limiter.limit("100 per minute")
+@require_jwt
 def get_metrics():
     """Query metrics from Prometheus and convert to frontend format"""
     tenant_id = request.args.get('tenant_id')
@@ -402,8 +431,11 @@ def get_metrics():
     if not tenant_id:
         return jsonify({"error": "tenant_id query parameter required"}), 400
     
-    if not validate_tenant(tenant_id):
-        return jsonify({"error": "Invalid or inactive tenant"}), 403
+    # SECURITY: Verify authenticated user can access this tenant
+    is_valid, error_response = verify_tenant_access(tenant_id)
+    if not is_valid:
+        return error_response
+
     
     # Query only http_requests_total to keep payload small and fast
     # This is the primary metric the frontend charts need
@@ -524,6 +556,7 @@ def get_metrics_range():
 
 @app.route('/api/traces', methods=['GET'])
 @limiter.limit("100 per minute")
+@require_jwt
 def get_traces():
     """Query traces from Tempo with multi-tenant filtering"""
     tenant_id = request.args.get('tenant_id')
@@ -533,8 +566,11 @@ def get_traces():
     if not tenant_id:
         return jsonify({"error": "tenant_id query parameter required"}), 400
     
-    if not validate_tenant(tenant_id):
-        return jsonify({"error": "Invalid or inactive tenant"}), 403
+    # SECURITY: Verify authenticated user can access this tenant
+    is_valid, error_response = verify_tenant_access(tenant_id)
+    if not is_valid:
+        return error_response
+
     
     # Check cache for consistent results (Tempo search is non-deterministic)
     cache_key = f"{tenant_id}_{hours}"

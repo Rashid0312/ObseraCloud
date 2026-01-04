@@ -79,7 +79,15 @@ const MetricsChart: React.FC<MetricsChartProps> = ({ tenantId, refreshKey }) => 
       try {
         const hours = parseFloat(timeRange);
         const url = `${API_BASE_URL}/api/metrics?tenant_id=${tenantId}&hours=${hours}`;
-        const response = await fetch(url);
+
+        // Include JWT token for authentication
+        const token = localStorage.getItem('token');
+        const headers: HeadersInit = {};
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        const response = await fetch(url, { headers });
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
@@ -94,7 +102,8 @@ const MetricsChart: React.FC<MetricsChartProps> = ({ tenantId, refreshKey }) => 
         // Fetch real uptime data
         try {
           const uptimeResponse = await fetch(
-            `${API_BASE_URL}/api/uptime?tenant_id=${tenantId}&hours=${Math.ceil(hours)}`
+            `${API_BASE_URL}/api/uptime?tenant_id=${tenantId}&hours=${Math.ceil(hours)}`,
+            { headers }
           );
           if (uptimeResponse.ok) {
             const uptimeResult = await uptimeResponse.json();

@@ -130,7 +130,15 @@ const TracesPanel: React.FC<TracesPanelProps> = ({ tenantId, refreshKey, highlig
 
       try {
         const hours = parseFloat(timeRange);
-        const response = await fetch(`${API_BASE_URL}/api/traces?tenant_id=${tenantId}&limit=100&hours=${hours}`);
+
+        // Include JWT token for authentication
+        const token = localStorage.getItem('token');
+        const headers: HeadersInit = {};
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        const response = await fetch(`${API_BASE_URL}/api/traces?tenant_id=${tenantId}&limit=100&hours=${hours}`, { headers });
         if (!response.ok) throw new Error('Failed to fetch traces');
         const data = await response.json();
         // Sort traces by timestamp - newest first

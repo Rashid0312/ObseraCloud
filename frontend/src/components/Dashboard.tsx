@@ -77,10 +77,15 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, onGoHome }) => {
 
     const fetchStats = async () => {
       try {
+        const headers: HeadersInit = {};
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+
         const [logsRes, metricsRes, tracesRes] = await Promise.all([
-          fetch(`${API_BASE_URL}/api/logs?tenant_id=${tenantId}&limit=100`),
-          fetch(`${API_BASE_URL}/api/metrics?tenant_id=${tenantId}`),
-          fetch(`${API_BASE_URL}/api/traces?tenant_id=${tenantId}`)
+          fetch(`${API_BASE_URL}/api/logs?tenant_id=${tenantId}&limit=100`, { headers }),
+          fetch(`${API_BASE_URL}/api/metrics?tenant_id=${tenantId}`, { headers }),
+          fetch(`${API_BASE_URL}/api/traces?tenant_id=${tenantId}`, { headers })
         ]);
 
         const logsData = await logsRes.json();
@@ -110,7 +115,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, onGoHome }) => {
     fetchStats();
     const interval = setInterval(fetchStats, 5000);
     return () => clearInterval(interval);
-  }, [tenantId, refreshKey]);
+  }, [tenantId, refreshKey, token]);
 
   const handleLogout = () => {
     localStorage.removeItem('tenant_id');
