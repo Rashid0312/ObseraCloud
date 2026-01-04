@@ -15,6 +15,7 @@ from psycopg2.extras import RealDictCursor
 # OTLP Protobuf imports
 from opentelemetry.proto.collector.metrics.v1.metrics_service_pb2 import ExportMetricsServiceRequest
 from opentelemetry.proto.collector.logs.v1.logs_service_pb2 import ExportLogsServiceRequest
+from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import ExportTraceServiceRequest
 from opentelemetry.proto.common.v1.common_pb2 import KeyValue, AnyValue
 
 # Configure logging
@@ -97,6 +98,29 @@ def inject_tenant_attribute(data: dict, tenant_id: str) -> dict:
             })
     return data
 
+def inject_tenant_to_traces_protobuf(payload: bytes, tenant_id: str) -> bytes:
+    """Inject tenant_id into OTLP traces (Protobuf format)"""
+    try:
+        request = ExportTraceServiceRequest()
+        request.ParseFromString(payload)
+        
+        logger.debug(f"Parsed traces protobuf: {len(request.resource_spans)} resource_spans")
+        
+        # Inject tenant_id into each resource
+        for resource_span in request.resource_spans:
+            # Create tenant_id attribute
+            tenant_attr = KeyValue(
+                key='tenant_id',
+                value=AnyValue(string_value=tenant_id)
+            )
+            resource_span.resource.attributes.append(tenant_attr)
+        
+        logger.debug(f"Injected tenant_id={tenant_id} into {len(request.resource_spans)} resource_spans")
+        return request.SerializeToString()
+    except Exception as e:
+        logger.error(f"Failed to parse/inject tenant_id into traces protobuf: {e}")
+        return payload
+
 def inject_tenant_to_logs_protobuf(payload: bytes, tenant_id: str) -> bytes:
     """Inject tenant_id into OTLP logs (Protobuf format)"""
     try:
@@ -177,7 +201,7 @@ def health():
 
 @app.route('/v1/traces', methods=['POST'])
 def traces_proxy():
-    """Proxy traces with authentication"""
+    """Proxy traces with authentication - supports JSON and Protobuf"""
     api_key = request.headers.get('X-API-Key')
     
     if not api_key:
@@ -190,23 +214,39 @@ def traces_proxy():
         return {'error': 'Invalid API key'}, 401
     
     try:
-        # Parse and inject tenant_id
-        data = request.get_json()
-        data = inject_tenant_attribute(data, tenant_info['tenant_id'])
+        content_type = request.headers.get('Content-Type', 'application/json')
+        logger.info(f"Received traces with Content-Type: {content_type}")
         
-        # Forward to OTEL Collector
-        response = requests.post(
-            f"{OTEL_COLLECTOR_URL}/v1/traces",
-            json=data,
-            headers={'Content-Type': 'application/json'},
-            timeout=10
-        )
+        # Handle Protobuf format
+        if 'protobuf' in content_type:
+            logger.info("Using Protobuf parsing path for traces")
+            payload = request.get_data()
+            modified_payload = inject_tenant_to_traces_protobuf(payload, tenant_info['tenant_id'])
+            
+            response = requests.post(
+                f"{OTEL_COLLECTOR_URL}/v1/traces",
+                data=modified_payload,
+                headers={'Content-Type': content_type},
+                timeout=10
+            )
+        # Handle JSON format
+        else:
+            logger.info("Using JSON parsing path for traces")
+            data = request.get_json()
+            data = inject_tenant_attribute(data, tenant_info['tenant_id'])
+            
+            response = requests.post(
+                f"{OTEL_COLLECTOR_URL}/v1/traces",
+                json=data,
+                headers={'Content-Type': 'application/json'},
+                timeout=10
+            )
         
-        logger.info(f"Trace forwarded for tenant: {tenant_info['tenant_id']}")
+        logger.info(f"Trace forwarded for tenant: {tenant_info['tenant_id']} - Status: {response.status_code}")
         return Response(
             response.content,
             status=response.status_code,
-            content_type='application/json'
+            content_type=content_type
         )
     except Exception as e:
         logger.error(f"Failed to forward trace: {e}")
