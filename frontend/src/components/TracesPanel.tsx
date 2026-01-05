@@ -489,12 +489,13 @@ const TracesPanel: React.FC<TracesPanelProps> = ({ tenantId, refreshKey, highlig
         document.body
       )}
 
-      {/* Data Deletion Modal */}
-      {showDeletion && (
+      {/* Data Deletion Modal - rendered via portal to escape overflow:hidden */}
+      {showDeletion && createPortal(
         <DataDeletionPanel
           tenantId={tenantId}
           onClose={() => setShowDeletion(false)}
-        />
+        />,
+        document.body
       )}
     </div>
   );
