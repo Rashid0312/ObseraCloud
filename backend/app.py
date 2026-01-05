@@ -1757,7 +1757,7 @@ def delete_traces():
             AND Timestamp >= toDateTime64({start_nano / 1_000_000_000}, 9)
             AND Timestamp <= toDateTime64({end_nano / 1_000_000_000}, 9)
         """
-        count_result = ch.client.query(count_query)
+        count_result = ch.get_client().query(count_query)
         traces_to_delete = count_result.result_rows[0][0] if count_result.result_rows else 0
         
         # Execute deletion
@@ -1767,7 +1767,7 @@ def delete_traces():
             AND Timestamp >= toDateTime64({start_nano / 1_000_000_000}, 9)
             AND Timestamp <= toDateTime64({end_nano / 1_000_000_000}, 9)
         """
-        ch.client.command(delete_query)
+        ch.get_client().command(delete_query)
         
         logger.info(f"Deleted {traces_to_delete} traces for tenant {tenant_id} from {start_time_str} to {end_time_str}")
         
@@ -1822,7 +1822,7 @@ def delete_logs():
             AND Timestamp >= toDateTime64({start_nano / 1_000_000_000}, 9)
             AND Timestamp <= toDateTime64({end_nano / 1_000_000_000}, 9)
         """
-        count_result = ch.client.query(count_query)
+        count_result = ch.get_client().query(count_query)
         logs_to_delete = count_result.result_rows[0][0] if count_result.result_rows else 0
         
         # Execute deletion
@@ -1832,7 +1832,7 @@ def delete_logs():
             AND Timestamp >= toDateTime64({start_nano / 1_000_000_000}, 9)
             AND Timestamp <= toDateTime64({end_nano / 1_000_000_000}, 9)
         """
-        ch.client.command(delete_query)
+        ch.get_client().command(delete_query)
         
         logger.info(f"Deleted {logs_to_delete} logs for tenant {tenant_id} from {start_time_str} to {end_time_str}")
         
