@@ -161,11 +161,11 @@ def verify_tenant_access(requested_tenant_id):
     # CRITICAL: Verify the requested tenant matches the authenticated user
     if requested_tenant_id != authenticated_tenant:
         logger.warning(f"SECURITY: Tenant {authenticated_tenant} attempted to access {requested_tenant_id}")
-        return False, jsonify({"error": "Access denied: You can only access your own tenant data"}), 403
+        return False, (jsonify({"error": "Access denied: You can only access your own tenant data"}), 403)
     
     # Validate the tenant is active
     if not validate_tenant(requested_tenant_id):
-        return False, jsonify({"error": "Invalid or inactive tenant"}), 403
+        return False, (jsonify({"error": "Invalid or inactive tenant"}), 403)
     
     return True, None
 
