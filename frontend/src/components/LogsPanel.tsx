@@ -74,7 +74,7 @@ const LogsPanel: React.FC<LogsPanelProps> = ({ tenantId, refreshKey, compact, on
     };
 
     fetchLogs();
-    const interval = setInterval(fetchLogs, 10000);
+    const interval = setInterval(fetchLogs, 30000); // Auto-refresh every 30s
     return () => clearInterval(interval);
   }, [tenantId, filter, refreshKey, compact, timeRange]);
 

@@ -120,7 +120,7 @@ const MetricsChart: React.FC<MetricsChartProps> = ({ tenantId, refreshKey }) => 
     };
 
     fetchMetrics();
-    const interval = setInterval(fetchMetrics, 5000);
+    const interval = setInterval(fetchMetrics, 30000); // Auto-refresh every 30s
     return () => clearInterval(interval);
   }, [tenantId, refreshKey, timeRange, isLive]);
 

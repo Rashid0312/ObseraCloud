@@ -100,12 +100,12 @@ def get_logs(tenant_id, severity=None, start_time=None, end_time=None, limit=100
     return execute_query(query, params)
 
 def get_traces(tenant_id, service_name=None, start_time=None, end_time=None, limit=100):
-    """Fetch recent traces (root spans)"""
+    """Fetch recent traces (all spans, not just root)"""
     params = {'tenant_id': tenant_id, 'limit': limit}
     
     where_clauses = [
-        "ResourceAttributes['tenant_id'] = %(tenant_id)s",
-        "ParentSpanId = ''"  # Only Root Spans
+        "ResourceAttributes['tenant_id'] = %(tenant_id)s"
+        # Removed ParentSpanId = '' filter to get ALL spans for distributed tracing
     ]
     
     if service_name:
@@ -125,8 +125,10 @@ def get_traces(tenant_id, service_name=None, start_time=None, end_time=None, lim
     query = f"""
         SELECT 
             TraceId,
-            SpanName as RootTraceName,
-            ServiceName as RootServiceName,
+            SpanId,
+            ParentSpanId,
+            SpanName,
+            ServiceName,
             toUnixTimestamp64Nano(Timestamp) as StartTimeUnixNano,
             Duration as DurationNano,
             StatusCode

@@ -173,7 +173,7 @@ const TracesPanel: React.FC<TracesPanelProps> = ({ tenantId, refreshKey, highlig
     };
 
     fetchTraces(false); // Initial load
-    const interval = setInterval(() => fetchTraces(true), 5000); // Auto-refresh every 5s
+    const interval = setInterval(() => fetchTraces(true), 30000); // Auto-refresh every 30s
     return () => clearInterval(interval);
   }, [tenantId, refreshKey, timeRange]);
 

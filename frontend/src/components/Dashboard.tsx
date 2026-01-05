@@ -113,7 +113,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, onGoHome }) => {
     };
 
     fetchStats();
-    const interval = setInterval(fetchStats, 5000);
+    const interval = setInterval(fetchStats, 30000); // Auto-refresh every 30s
     return () => clearInterval(interval);
   }, [tenantId, refreshKey, token]);
 
