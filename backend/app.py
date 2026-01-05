@@ -1716,6 +1716,142 @@ def ai_debug_log():
             "error": result["error"]
         }), 503
 
+# ==================== DATA DELETION ====================
+
+@app.route('/api/traces/delete', methods=['POST'])
+@limiter.limit("10 per minute")
+@require_jwt
+def delete_traces():
+    """Delete traces within a time range for a tenant"""
+    data = request.get_json()
+    tenant_id = data.get('tenant_id')
+    start_time_str = data.get('start_time')  # ISO format: "2026-01-01T00:00:00"
+    end_time_str = data.get('end_time')      # ISO format: "2026-01-05T23:59:59"
+    
+    if not all([tenant_id, start_time_str, end_time_str]):
+        return jsonify({"error": "tenant_id, start_time, and end_time are required"}), 400
+    
+    # SECURITY: Verify authenticated user can access this tenant
+    is_valid, error_response = verify_tenant_access(tenant_id)
+    if not is_valid:
+        return error_response
+    
+    try:
+        # Parse time strings
+        start_time = datetime.fromisoformat(start_time_str.replace('Z', '+00:00'))
+        end_time = datetime.fromisoformat(end_time_str.replace('Z', '+00:00'))
+        
+        # Validate time range
+        if start_time >= end_time:
+            return jsonify({"error": "start_time must be before end_time"}), 400
+        
+        # Convert to Unix timestamps (nanoseconds for ClickHouse)
+        start_nano = int(start_time.timestamp() * 1_000_000_000)
+        end_nano = int(end_time.timestamp() * 1_000_000_000)
+        
+        # Count traces before deletion (for confirmation)
+        count_query = f"""
+            SELECT count(*) as cnt 
+            FROM otel_traces 
+            WHERE ResourceAttributes['tenant_id'] = '{tenant_id}'
+            AND Timestamp >= toDateTime64({start_nano / 1_000_000_000}, 9)
+            AND Timestamp <= toDateTime64({end_nano / 1_000_000_000}, 9)
+        """
+        count_result = ch.client.query(count_query)
+        traces_to_delete = count_result.result_rows[0][0] if count_result.result_rows else 0
+        
+        # Execute deletion
+        delete_query = f"""
+            ALTER TABLE otel_traces DELETE 
+            WHERE ResourceAttributes['tenant_id'] = '{tenant_id}'
+            AND Timestamp >= toDateTime64({start_nano / 1_000_000_000}, 9)
+            AND Timestamp <= toDateTime64({end_nano / 1_000_000_000}, 9)
+        """
+        ch.client.command(delete_query)
+        
+        logger.info(f"Deleted {traces_to_delete} traces for tenant {tenant_id} from {start_time_str} to {end_time_str}")
+        
+        return jsonify({
+            "success": True,
+            "deleted_count": traces_to_delete,
+            "tenant_id": tenant_id,
+            "time_range": {
+                "start": start_time_str,
+                "end": end_time_str
+            }
+        }), 200
+        
+    except ValueError as e:
+        return jsonify({"error": f"Invalid time format: {str(e)}"}), 400
+    except Exception as e:
+        logger.error(f"Trace deletion failed: {str(e)}")
+        return jsonify({"error": f"Failed to delete traces: {str(e)}"}), 500
+
+@app.route('/api/logs/delete', methods=['POST'])
+@limiter.limit("10 per minute")
+@require_jwt
+def delete_logs():
+    """Delete logs within a time range for a tenant"""
+    data = request.get_json()
+    tenant_id = data.get('tenant_id')
+    start_time_str = data.get('start_time')
+    end_time_str = data.get('end_time')
+    
+    if not all([tenant_id, start_time_str, end_time_str]):
+        return jsonify({"error": "tenant_id, start_time, and end_time are required"}), 400
+    
+    is_valid, error_response = verify_tenant_access(tenant_id)
+    if not is_valid:
+        return error_response
+    
+    try:
+        start_time = datetime.fromisoformat(start_time_str.replace('Z', '+00:00'))
+        end_time = datetime.fromisoformat(end_time_str.replace('Z', '+00:00'))
+        
+        if start_time >= end_time:
+            return jsonify({"error": "start_time must be before end_time"}), 400
+        
+        start_nano = int(start_time.timestamp() * 1_000_000_000)
+        end_nano = int(end_time.timestamp() * 1_000_000_000)
+        
+        # Count logs before deletion
+        count_query = f"""
+            SELECT count(*) as cnt 
+            FROM otel_logs 
+            WHERE ResourceAttributes['tenant_id'] = '{tenant_id}'
+            AND Timestamp >= toDateTime64({start_nano / 1_000_000_000}, 9)
+            AND Timestamp <= toDateTime64({end_nano / 1_000_000_000}, 9)
+        """
+        count_result = ch.client.query(count_query)
+        logs_to_delete = count_result.result_rows[0][0] if count_result.result_rows else 0
+        
+        # Execute deletion
+        delete_query = f"""
+            ALTER TABLE otel_logs DELETE 
+            WHERE ResourceAttributes['tenant_id'] = '{tenant_id}'
+            AND Timestamp >= toDateTime64({start_nano / 1_000_000_000}, 9)
+            AND Timestamp <= toDateTime64({end_nano / 1_000_000_000}, 9)
+        """
+        ch.client.command(delete_query)
+        
+        logger.info(f"Deleted {logs_to_delete} logs for tenant {tenant_id} from {start_time_str} to {end_time_str}")
+        
+        return jsonify({
+            "success": True,
+            "deleted_count": logs_to_delete,
+            "tenant_id": tenant_id,
+            "time_range": {
+                "start": start_time_str,
+                "end": end_time_str
+            }
+        }), 200
+        
+    except ValueError as e:
+        return jsonify({"error": f"Invalid time format: {str(e)}"}), 400
+    except Exception as e:
+        logger.error(f"Log deletion failed: {str(e)}")
+        return jsonify({"error": f"Failed to delete logs: {str(e)}"}), 500
+
 # ==================== MAIN ====================
 
 if __name__ == '__main__':

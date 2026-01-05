@@ -4,6 +4,7 @@ import { API_BASE_URL } from '../config';
 import { AlertCircle, Check, X, ChevronDown, ChevronRight, Clock, Server, Layers, Link } from 'lucide-react';
 import './TracesPanel.css';
 import CorrelatedView from './CorrelatedView';
+import { DataDeletionPanel } from './DataDeletionPanel';
 
 interface Trace {
   traceID: string;
@@ -55,6 +56,7 @@ const TracesPanel: React.FC<TracesPanelProps> = ({ tenantId, refreshKey, highlig
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [timeRange, setTimeRange] = useState<string>('24'); // Default 24 hours
   const [correlatedTraceId, setCorrelatedTraceId] = useState<string | null>(null);
+  const [showDeletion, setShowDeletion] = useState(false);
 
   // Auto-expand trace when navigating from logs panel
   // Auto-expand trace when navigating from logs panel
@@ -310,9 +312,30 @@ const TracesPanel: React.FC<TracesPanelProps> = ({ tenantId, refreshKey, highlig
             </select>
           </div>
         </div>
-        <div className="obs-live-indicator">
-          <span className="obs-live-dot"></span>
-          <span>Live</span>
+        <div className="obs-header-actions">
+          <div className="obs-live-indicator">
+            <span className="obs-live-dot"></span>
+            <span>Live</span>
+          </div>
+          <button
+            className="obs-delete-btn"
+            onClick={() => setShowDeletion(true)}
+            style={{
+              padding: '6px 12px',
+              background: '#f44336',
+              border: 'none',
+              borderRadius: '6px',
+              color: '#fff',
+              cursor: 'pointer',
+              fontSize: '0.85rem',
+              marginLeft: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            Delete Data
+          </button>
         </div>
       </div>
 
@@ -464,6 +487,14 @@ const TracesPanel: React.FC<TracesPanelProps> = ({ tenantId, refreshKey, highlig
           </div>
         </div>,
         document.body
+      )}
+
+      {/* Data Deletion Modal */}
+      {showDeletion && (
+        <DataDeletionPanel
+          tenantId={tenantId}
+          onClose={() => setShowDeletion(false)}
+        />
       )}
     </div>
   );
