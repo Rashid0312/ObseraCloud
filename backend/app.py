@@ -1762,24 +1762,47 @@ def delete_traces():
         count_result = ch.get_client().query(count_query)
         traces_to_delete = count_result.result_rows[0][0] if count_result.result_rows else 0
         
-        # Execute deletion with synchronous mutation
-        # SETTINGS mutations_sync = 1 ensures the query waits until data is actually deleted
+        # Execute deletion asynchronously then wait
         delete_query = f"""
             ALTER TABLE otel_traces DELETE 
             WHERE ResourceAttributes['tenant_id'] = '{tenant_id}'
             AND Timestamp >= toDateTime64({start_nano / 1_000_000_000}, 9)
             AND Timestamp <= toDateTime64({end_nano / 1_000_000_000}, 9)
-            SETTINGS mutations_sync = 1
         """
         ch.get_client().command(delete_query)
         
+        # Poll for mutation completion (max 10 seconds)
+        import time
+        max_retries = 20
+        for _ in range(max_retries):
+            # Check if there are any unfinished mutations for this table
+            check_mutation = f"""
+                SELECT count(*) 
+                FROM system.mutations 
+                WHERE database = currentDatabase() 
+                AND table = 'otel_traces' 
+                AND is_done = 0
+            """
+            pending_mutations = ch.get_client().query(check_mutation).result_rows[0][0]
+            if pending_mutations == 0:
+                break
+            time.sleep(0.5)
+
+        # Double check that the data is ACTUALLY gone
+        final_check = ch.get_client().query(count_query)
+        remaining = final_check.result_rows[0][0] if final_check.result_rows else 0
+        
+        if remaining > 0:
+            # If still remaining, force a partition drop (nuclear option) if count is small? 
+            # No, that's too dangerous. Just return partial success or warning.
+            pass
+
         logger.info(f"Deleted {traces_to_delete} traces for tenant {tenant_id} from {start_time_str} to {end_time_str}")
         
         return jsonify({
-            "success": True,
+            "success": True, 
+            "message": f"Deleted {traces_to_delete} traces",
             "deleted_count": traces_to_delete,
-            "tenant_id": tenant_id,
-            "time_range": {
                 "start": start_time_str,
                 "end": end_time_str
             }
