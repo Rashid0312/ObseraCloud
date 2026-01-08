@@ -100,7 +100,7 @@ def get_logs(tenant_id, severity=None, start_time=None, end_time=None, limit=100
     return execute_query(query, params)
 
 def get_traces(tenant_id, service_name=None, start_time=None, end_time=None, limit=100):
-    """Fetch recent traces - deduplicated by TraceId using LIMIT BY"""
+    """Fetch recent traces - deduplicated by TraceId using subquery"""
     params = {'tenant_id': tenant_id, 'limit': limit}
     
     where_clauses = [
@@ -121,28 +121,30 @@ def get_traces(tenant_id, service_name=None, start_time=None, end_time=None, lim
         
     where_sql = " AND ".join(where_clauses)
     
-    # Use LIMIT 1 BY TraceId to get only one row per trace
-    # Order by Timestamp ASC first to get the root span (earliest), then reverse for display
+    # Use subquery to deduplicate: get one span per TraceId, then order for display
     query = f"""
-        SELECT 
-            TraceId,
-            SpanId,
-            ParentSpanId,
-            SpanName AS RootTraceName,
-            CASE 
-                WHEN ServiceName != '' THEN ServiceName 
-                ELSE ResourceAttributes['service.name']
-            END AS RootServiceName,
-            toUnixTimestamp64Nano(Timestamp) as StartTimeUnixNano,
-            Duration as DurationNano,
-            StatusCode,
-            SpanAttributes,
-            ResourceAttributes
-        FROM otel_traces
-        WHERE {where_sql}
-        ORDER BY Timestamp ASC
-        LIMIT 1 BY TraceId
-        ORDER BY Timestamp DESC
+        SELECT * FROM (
+            SELECT 
+                TraceId,
+                SpanId,
+                ParentSpanId,
+                SpanName AS RootTraceName,
+                CASE 
+                    WHEN ServiceName != '' THEN ServiceName 
+                    ELSE ResourceAttributes['service.name']
+                END AS RootServiceName,
+                toUnixTimestamp64Nano(Timestamp) as StartTimeUnixNano,
+                Duration as DurationNano,
+                StatusCode,
+                SpanAttributes,
+                ResourceAttributes,
+                Timestamp
+            FROM otel_traces
+            WHERE {where_sql}
+            ORDER BY Timestamp ASC
+            LIMIT 1 BY TraceId
+        )
+        ORDER BY StartTimeUnixNano DESC
         LIMIT %(limit)s
     """
     
