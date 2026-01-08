@@ -1762,12 +1762,14 @@ def delete_traces():
         count_result = ch.get_client().query(count_query)
         traces_to_delete = count_result.result_rows[0][0] if count_result.result_rows else 0
         
-        # Execute deletion
+        # Execute deletion with synchronous mutation
+        # SETTINGS mutations_sync = 1 ensures the query waits until data is actually deleted
         delete_query = f"""
             ALTER TABLE otel_traces DELETE 
             WHERE ResourceAttributes['tenant_id'] = '{tenant_id}'
             AND Timestamp >= toDateTime64({start_nano / 1_000_000_000}, 9)
             AND Timestamp <= toDateTime64({end_nano / 1_000_000_000}, 9)
+            SETTINGS mutations_sync = 1
         """
         ch.get_client().command(delete_query)
         
