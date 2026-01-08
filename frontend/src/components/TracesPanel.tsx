@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { API_BASE_URL } from '../config';
-import { AlertCircle, Check, X, ChevronDown, ChevronRight, Clock, Server, Layers, Link } from 'lucide-react';
+import { AlertCircle, Check, X, ChevronDown, ChevronRight, Clock, Server, Layers, Link, Copy, Info } from 'lucide-react';
 import './TracesPanel.css';
 import CorrelatedView from './CorrelatedView';
 import { DataDeletionPanel } from './DataDeletionPanel';
@@ -13,6 +13,8 @@ interface Trace {
   startTimeUnixNano: string;
   durationMs: number;
   status?: string;
+  spanAttributes?: Record<string, string>;
+  resourceAttributes?: Record<string, string>;
 }
 
 interface Span {
@@ -371,6 +373,16 @@ const TracesPanel: React.FC<TracesPanelProps> = ({ tenantId, refreshKey, highlig
                     <span className="obs-trace-operation">{trace.rootTraceName}</span>
                     <div className="obs-trace-meta">
                       <code className="obs-trace-id">{trace.traceID.substring(0, 16)}</code>
+                      <button
+                        className="obs-copy-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigator.clipboard.writeText(trace.traceID);
+                        }}
+                        title="Copy full trace ID"
+                      >
+                        <Copy size={12} />
+                      </button>
                       <span className={`obs-trace-service ${getServiceClass(trace.rootServiceName)}`}>
                         {trace.rootServiceName}
                       </span>

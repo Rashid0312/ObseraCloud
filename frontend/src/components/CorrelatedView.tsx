@@ -44,7 +44,7 @@ const CorrelatedView: React.FC<CorrelatedViewProps> = ({ traceId, tenantId, onCl
     const [data, setData] = useState<CorrelatedData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [activeTab, setActiveTab] = useState<'trace' | 'logs'>('trace');
+    const [activeTab, setActiveTab] = useState<'trace' | 'logs' | 'services'>('trace');
 
     useEffect(() => {
         fetchCorrelatedData();
@@ -141,7 +141,7 @@ const CorrelatedView: React.FC<CorrelatedViewProps> = ({ traceId, tenantId, onCl
                 </div>
             </div>
 
-            {/* Tabs - Only Trace and Logs */}
+            {/* Tabs - Trace, Logs, and Services */}
             <div className="tabs">
                 <button
                     className={`tab ${activeTab === 'trace' ? 'active' : ''}`}
@@ -154,6 +154,12 @@ const CorrelatedView: React.FC<CorrelatedViewProps> = ({ traceId, tenantId, onCl
                     onClick={() => setActiveTab('logs')}
                 >
                     Related Logs
+                </button>
+                <button
+                    className={`tab ${activeTab === 'services' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('services')}
+                >
+                    Services
                 </button>
             </div>
 
@@ -203,6 +209,40 @@ const CorrelatedView: React.FC<CorrelatedViewProps> = ({ traceId, tenantId, onCl
                                     <div className="log-message">{log.message}</div>
                                 </div>
                             ))
+                        )}
+                    </div>
+                )}
+
+                {/* Services View */}
+                {activeTab === 'services' && (
+                    <div className="services-view">
+                        {!data.trace || data.trace.spans.length === 0 ? (
+                            <div className="empty-state">
+                                <div className="empty-icon">🔗</div>
+                                <div className="empty-text">No service data available</div>
+                            </div>
+                        ) : (
+                            <div className="services-list">
+                                <div className="services-header">
+                                    <span>Services in this trace</span>
+                                </div>
+                                {[...new Set(data.trace.spans.map(s => s.attributes?.['service.name'] || 'unknown'))].map((service, idx) => {
+                                    const serviceSpans = data.trace!.spans.filter(s => (s.attributes?.['service.name'] || 'unknown') === service);
+                                    const avgDuration = serviceSpans.reduce((sum, s) => sum + s.duration_ms, 0) / serviceSpans.length;
+                                    const hasErrors = serviceSpans.some(s => s.status === 2);
+
+                                    return (
+                                        <div key={idx} className={`service-card ${hasErrors ? 'error' : ''}`}>
+                                            <div className="service-name">{service}</div>
+                                            <div className="service-stats">
+                                                <span className="service-stat">{serviceSpans.length} spans</span>
+                                                <span className="service-stat">~{avgDuration.toFixed(0)}ms avg</span>
+                                                {hasErrors && <span className="service-error-badge">Has Errors</span>}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
                         )}
                     </div>
                 )}

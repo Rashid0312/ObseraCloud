@@ -122,16 +122,23 @@ def get_traces(tenant_id, service_name=None, start_time=None, end_time=None, lim
         
     where_sql = " AND ".join(where_clauses)
     
+    # Include SpanAttributes and ResourceAttributes for detailed view
+    # Fallback to service.name from ResourceAttributes if ServiceName is empty
     query = f"""
         SELECT 
             TraceId,
             SpanId,
             ParentSpanId,
             SpanName AS RootTraceName,
-            ServiceName AS RootServiceName,
+            CASE 
+                WHEN ServiceName != '' THEN ServiceName 
+                ELSE ResourceAttributes['service.name']
+            END AS RootServiceName,
             toUnixTimestamp64Nano(Timestamp) as StartTimeUnixNano,
             Duration as DurationNano,
-            StatusCode
+            StatusCode,
+            SpanAttributes,
+            ResourceAttributes
         FROM otel_traces
         WHERE {where_sql}
         ORDER BY Timestamp DESC

@@ -621,10 +621,12 @@ def get_traces():
             result_traces.append({
                 "traceID": t['TraceId'],
                 "rootTraceName": t['RootTraceName'],
-                "rootServiceName": t['RootServiceName'],
+                "rootServiceName": t['RootServiceName'] or 'unknown',
                 "startTimeUnixNano": str(t['StartTimeUnixNano']),
                 "durationMs": t['DurationNano'] / 1_000_000,
-                "status": t['StatusCode']
+                "status": t['StatusCode'],
+                "spanAttributes": t.get('SpanAttributes') or {},
+                "resourceAttributes": t.get('ResourceAttributes') or {}
             })
             
         logger.info(f"Retrieved {len(result_traces)} traces from ClickHouse for tenant: {tenant_id}")
