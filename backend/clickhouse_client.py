@@ -100,7 +100,7 @@ def get_logs(tenant_id, severity=None, start_time=None, end_time=None, limit=100
     return execute_query(query, params)
 
 def get_traces(tenant_id, service_name=None, start_time=None, end_time=None, limit=100):
-    """Fetch recent traces - deduplicated by TraceId"""
+    """Fetch recent traces - deduplicated by TraceId using LIMIT BY"""
     params = {'tenant_id': tenant_id, 'limit': limit}
     
     where_clauses = [
@@ -121,29 +121,28 @@ def get_traces(tenant_id, service_name=None, start_time=None, end_time=None, lim
         
     where_sql = " AND ".join(where_clauses)
     
-    # Deduplicate by TraceId - get the earliest span (root) for each trace
-    # Using argMin to get values from the row with minimum timestamp per trace
+    # Use LIMIT 1 BY TraceId to get only one row per trace
+    # Order by Timestamp ASC first to get the root span (earliest), then reverse for display
     query = f"""
         SELECT 
             TraceId,
-            argMin(SpanId, Timestamp) as SpanId,
-            argMin(ParentSpanId, Timestamp) as ParentSpanId,
-            argMin(SpanName, Timestamp) AS RootTraceName,
-            argMin(
-                CASE 
-                    WHEN ServiceName != '' THEN ServiceName 
-                    ELSE ResourceAttributes['service.name']
-                END, Timestamp
-            ) AS RootServiceName,
-            toUnixTimestamp64Nano(min(Timestamp)) as StartTimeUnixNano,
-            max(Duration) as DurationNano,
-            argMin(StatusCode, Timestamp) as StatusCode,
-            argMin(SpanAttributes, Timestamp) as SpanAttributes,
-            argMin(ResourceAttributes, Timestamp) as ResourceAttributes
+            SpanId,
+            ParentSpanId,
+            SpanName AS RootTraceName,
+            CASE 
+                WHEN ServiceName != '' THEN ServiceName 
+                ELSE ResourceAttributes['service.name']
+            END AS RootServiceName,
+            toUnixTimestamp64Nano(Timestamp) as StartTimeUnixNano,
+            Duration as DurationNano,
+            StatusCode,
+            SpanAttributes,
+            ResourceAttributes
         FROM otel_traces
         WHERE {where_sql}
-        GROUP BY TraceId
-        ORDER BY min(Timestamp) DESC
+        ORDER BY Timestamp ASC
+        LIMIT 1 BY TraceId
+        ORDER BY Timestamp DESC
         LIMIT %(limit)s
     """
     
