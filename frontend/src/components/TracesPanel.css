@@ -109,6 +109,266 @@
   outline: none;
 }
 
+/* ================================
+   Filter Bar 
+   ================================ */
+.obs-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 16px 20px;
+  background: hsl(220 15% 8%);
+  border-bottom: 1px solid hsl(220 20% 15%);
+}
+
+/* Search Wrapper */
+.obs-search-wrapper {
+  position: relative;
+  flex: 1;
+  min-width: 280px;
+  max-width: 400px;
+}
+
+.obs-search-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: hsl(220 15% 45%);
+  pointer-events: none;
+}
+
+.obs-search-input {
+  width: 100%;
+  padding: 10px 40px 10px 42px;
+  background: hsl(220 15% 10%);
+  border: 1px solid hsl(220 25% 25% / 0.4);
+  border-radius: 8px;
+  color: hsl(220 15% 90%);
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+}
+
+.obs-search-input::placeholder {
+  color: hsl(220 15% 45%);
+}
+
+.obs-search-input:focus {
+  outline: none;
+  border-color: hsl(220 50% 50% / 0.6);
+  box-shadow: 0 0 0 3px hsl(220 50% 50% / 0.15);
+}
+
+.obs-search-clear {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: hsl(220 20% 18%);
+  border: none;
+  border-radius: 4px;
+  color: hsl(220 15% 60%);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.obs-search-clear:hover {
+  background: hsl(220 25% 25%);
+  color: hsl(220 15% 85%);
+}
+
+/* Filter Dropdowns */
+.obs-filter-dropdowns {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.obs-filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.obs-filter-group label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: hsl(220 15% 50%);
+}
+
+.obs-filter-dropdown {
+  padding: 8px 32px 8px 12px;
+  background: hsl(220 15% 10%);
+  border: 1px solid hsl(220 25% 25% / 0.4);
+  border-radius: 6px;
+  color: hsl(220 15% 85%);
+  font-size: 0.85rem;
+  cursor: pointer;
+  min-width: 140px;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%236b7280' viewBox='0 0 24 24'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  transition: all 0.15s ease;
+}
+
+.obs-filter-dropdown:hover {
+  border-color: hsl(220 30% 35%);
+}
+
+.obs-filter-dropdown:focus {
+  outline: none;
+  border-color: hsl(220 50% 50% / 0.6);
+}
+
+/* Active Filters Bar */
+.obs-active-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  background: hsl(220 20% 10%);
+  border-bottom: 1px solid hsl(220 20% 15%);
+}
+
+.obs-filter-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: hsl(220 15% 55%);
+  font-weight: 500;
+}
+
+.obs-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px 5px 12px;
+  background: hsl(220 30% 20%);
+  border: 1px solid hsl(220 30% 35% / 0.5);
+  border-radius: 20px;
+  font-size: 0.8rem;
+  color: hsl(220 20% 85%);
+}
+
+.obs-filter-chip.service {
+  background: hsl(210 40% 18%);
+  border-color: hsl(210 50% 40% / 0.5);
+  color: hsl(210 60% 75%);
+}
+
+.obs-filter-chip.ok {
+  background: hsl(150 40% 15%);
+  border-color: hsl(150 50% 40% / 0.5);
+  color: hsl(150 60% 70%);
+}
+
+.obs-filter-chip.error {
+  background: hsl(0 40% 18%);
+  border-color: hsl(0 50% 40% / 0.5);
+  color: hsl(0 60% 75%);
+}
+
+.obs-filter-chip.duration {
+  background: hsl(45 40% 15%);
+  border-color: hsl(45 50% 40% / 0.5);
+  color: hsl(45 60% 70%);
+}
+
+.obs-filter-chip button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  background: hsl(0 0% 100% / 0.1);
+  border: none;
+  border-radius: 50%;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: all 0.15s ease;
+}
+
+.obs-filter-chip button:hover {
+  opacity: 1;
+  background: hsl(0 0% 100% / 0.2);
+}
+
+.obs-clear-filters {
+  padding: 5px 12px;
+  background: transparent;
+  border: 1px solid hsl(220 25% 30%);
+  border-radius: 6px;
+  color: hsl(220 15% 65%);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  margin-left: auto;
+}
+
+.obs-clear-filters:hover {
+  background: hsl(220 20% 15%);
+  border-color: hsl(220 30% 45%);
+  color: hsl(220 15% 85%);
+}
+
+/* Filter Results Count */
+.obs-filter-results {
+  padding: 8px 20px;
+  background: hsl(220 15% 7%);
+  border-bottom: 1px solid hsl(220 20% 12%);
+  font-size: 0.8rem;
+  color: hsl(220 15% 55%);
+}
+
+/* No Results State */
+.obs-no-results {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.obs-no-results-icon {
+  color: hsl(220 15% 30%);
+  margin-bottom: 16px;
+}
+
+.obs-no-results p {
+  color: hsl(220 15% 55%);
+  font-size: 1rem;
+  margin-bottom: 16px;
+}
+
+.obs-reset-filters-btn {
+  padding: 10px 20px;
+  background: hsl(220 50% 45%);
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.obs-reset-filters-btn:hover {
+  background: hsl(220 50% 55%);
+  transform: translateY(-1px);
+}
+
 /* Traces List */
 .obs-traces-list {
   display: flex;

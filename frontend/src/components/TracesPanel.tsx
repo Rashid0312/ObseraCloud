@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { API_BASE_URL } from '../config';
-import { AlertCircle, Check, X, ChevronDown, ChevronRight, Clock, Server, Layers, Link, Copy, Info } from 'lucide-react';
+import { AlertCircle, Check, X, ChevronDown, ChevronRight, Clock, Server, Layers, Link, Copy, Info, Search, Filter } from 'lucide-react';
 import './TracesPanel.css';
 import CorrelatedView from './CorrelatedView';
 import { DataDeletionPanel } from './DataDeletionPanel';
@@ -59,6 +59,13 @@ const TracesPanel: React.FC<TracesPanelProps> = ({ tenantId, refreshKey, highlig
   const [timeRange, setTimeRange] = useState<string>('24'); // Default 24 hours
   const [correlatedTraceId, setCorrelatedTraceId] = useState<string | null>(null);
   const [showDeletion, setShowDeletion] = useState(false);
+
+  // Filter states
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [serviceFilter, setServiceFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [durationFilter, setDurationFilter] = useState<string>('all');
+  const [showFilters, setShowFilters] = useState(false);
 
   // Auto-expand trace when navigating from logs panel
   // Auto-expand trace when navigating from logs panel
@@ -293,6 +300,72 @@ const TracesPanel: React.FC<TracesPanelProps> = ({ tenantId, refreshKey, highlig
     );
   }
 
+  // Extract unique values for filter dropdowns
+  const uniqueServices = useMemo(() => {
+    const services = [...new Set(traces.map(t => t.rootServiceName))].filter(Boolean);
+    return services.sort();
+  }, [traces]);
+
+  const uniqueOperations = useMemo(() => {
+    const ops = [...new Set(traces.map(t => t.rootTraceName))].filter(Boolean);
+    return ops.sort();
+  }, [traces]);
+
+  // Duration categories
+  const getDurationCategory = (ms: number): string => {
+    if (ms < 100) return 'fast';
+    if (ms < 500) return 'medium';
+    return 'slow';
+  };
+
+  // Filter traces based on all criteria
+  const filteredTraces = useMemo(() => {
+    return traces.filter(trace => {
+      // Search query filter (matches operation name, service, or trace ID)
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        const matchesOperation = trace.rootTraceName?.toLowerCase().includes(query);
+        const matchesService = trace.rootServiceName?.toLowerCase().includes(query);
+        const matchesTraceId = trace.traceID?.toLowerCase().includes(query);
+        if (!matchesOperation && !matchesService && !matchesTraceId) return false;
+      }
+
+      // Service filter
+      if (serviceFilter !== 'all' && trace.rootServiceName !== serviceFilter) return false;
+
+      // Status filter
+      if (statusFilter !== 'all') {
+        const isError = trace.status === 'ERROR';
+        if (statusFilter === 'error' && !isError) return false;
+        if (statusFilter === 'ok' && isError) return false;
+      }
+
+      // Duration filter
+      if (durationFilter !== 'all') {
+        const category = getDurationCategory(trace.durationMs);
+        if (durationFilter !== category) return false;
+      }
+
+      return true;
+    });
+  }, [traces, searchQuery, serviceFilter, statusFilter, durationFilter]);
+
+  // Count active filters
+  const activeFilterCount = [
+    searchQuery,
+    serviceFilter !== 'all' ? serviceFilter : '',
+    statusFilter !== 'all' ? statusFilter : '',
+    durationFilter !== 'all' ? durationFilter : ''
+  ].filter(Boolean).length;
+
+  // Clear all filters
+  const clearFilters = () => {
+    setSearchQuery('');
+    setServiceFilter('all');
+    setStatusFilter('all');
+    setDurationFilter('all');
+  };
+
   const maxDuration = Math.max(...traces.map(t => t.durationMs), 500);
 
   return (
@@ -341,9 +414,123 @@ const TracesPanel: React.FC<TracesPanelProps> = ({ tenantId, refreshKey, highlig
         </div>
       </div>
 
+      {/* Filter Bar */}
+      <div className="obs-filter-bar">
+        {/* Search Input */}
+        <div className="obs-search-wrapper">
+          <Search size={16} className="obs-search-icon" />
+          <input
+            type="text"
+            placeholder="Search traces by operation, service, or ID..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="obs-search-input"
+          />
+          {searchQuery && (
+            <button className="obs-search-clear" onClick={() => setSearchQuery('')}>
+              <X size={14} />
+            </button>
+          )}
+        </div>
+
+        {/* Filter Dropdowns */}
+        <div className="obs-filter-dropdowns">
+          <div className="obs-filter-group">
+            <label>Service</label>
+            <select
+              value={serviceFilter}
+              onChange={(e) => setServiceFilter(e.target.value)}
+              className="obs-filter-dropdown"
+            >
+              <option value="all">All Services</option>
+              {uniqueServices.map(service => (
+                <option key={service} value={service}>{service}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="obs-filter-group">
+            <label>Status</label>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="obs-filter-dropdown"
+            >
+              <option value="all">All Status</option>
+              <option value="ok">✓ OK</option>
+              <option value="error">✗ Error</option>
+            </select>
+          </div>
+
+          <div className="obs-filter-group">
+            <label>Duration</label>
+            <select
+              value={durationFilter}
+              onChange={(e) => setDurationFilter(e.target.value)}
+              className="obs-filter-dropdown"
+            >
+              <option value="all">All Durations</option>
+              <option value="fast">Fast (&lt;100ms)</option>
+              <option value="medium">Medium (100-500ms)</option>
+              <option value="slow">Slow (&gt;500ms)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* Active Filters */}
+      {activeFilterCount > 0 && (
+        <div className="obs-active-filters">
+          <span className="obs-filter-label">
+            <Filter size={14} />
+            Active Filters:
+          </span>
+          {searchQuery && (
+            <span className="obs-filter-chip">
+              Search: "{searchQuery.length > 20 ? searchQuery.slice(0, 20) + '...' : searchQuery}"
+              <button onClick={() => setSearchQuery('')}><X size={12} /></button>
+            </span>
+          )}
+          {serviceFilter !== 'all' && (
+            <span className="obs-filter-chip service">
+              Service: {serviceFilter}
+              <button onClick={() => setServiceFilter('all')}><X size={12} /></button>
+            </span>
+          )}
+          {statusFilter !== 'all' && (
+            <span className={`obs-filter-chip ${statusFilter}`}>
+              Status: {statusFilter === 'ok' ? '✓ OK' : '✗ Error'}
+              <button onClick={() => setStatusFilter('all')}><X size={12} /></button>
+            </span>
+          )}
+          {durationFilter !== 'all' && (
+            <span className="obs-filter-chip duration">
+              Duration: {durationFilter === 'fast' ? '<100ms' : durationFilter === 'medium' ? '100-500ms' : '>500ms'}
+              <button onClick={() => setDurationFilter('all')}><X size={12} /></button>
+            </span>
+          )}
+          <button className="obs-clear-filters" onClick={clearFilters}>
+            Clear All
+          </button>
+        </div>
+      )}
+
+      {/* Results Count */}
+      {activeFilterCount > 0 && (
+        <div className="obs-filter-results">
+          Showing {filteredTraces.length} of {traces.length} traces
+        </div>
+      )}
+
       {/* Traces List */}
       <div className="obs-traces-list">
-        {traces.map((trace) => {
+        {filteredTraces.length === 0 && activeFilterCount > 0 ? (
+          <div className="obs-no-results">
+            <Search size={40} className="obs-no-results-icon" />
+            <p>No traces match your filters</p>
+            <button onClick={clearFilters} className="obs-reset-filters-btn">Reset Filters</button>
+          </div>
+        ) : filteredTraces.map((trace) => {
           const durationClass = getDurationClass(trace.durationMs);
           const isExpanded = expandedTrace === trace.traceID;
           const isError = trace.status === 'ERROR';
