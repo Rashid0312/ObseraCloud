@@ -150,7 +150,7 @@ if __name__ == "__main__":
     print(f"📡 Sending to: {TEMPO_OTLP_URL}")
     print("⏹️  Press Ctrl+C to stop\n")
     
-    tenants = ['acme', 'globex', 'initech']
+    tenants = ['acme', 'globex', 'initech', 'Tourni1010', 'rosseta']
     count = 0
     errors = 0
     
@@ -167,7 +167,7 @@ if __name__ == "__main__":
             else:
                 errors += 1
             
-            time.sleep(3)  # Send a trace every 3 seconds
+            time.sleep(0.1)  # Send a trace every 0.1 seconds
             
     except KeyboardInterrupt:
         print(f"\n\n📊 Stats: {count} traces sent, {errors} errors")

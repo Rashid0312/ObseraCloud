@@ -127,8 +127,8 @@ def get_traces(tenant_id, service_name=None, start_time=None, end_time=None, lim
             TraceId,
             SpanId,
             ParentSpanId,
-            SpanName,
-            ServiceName,
+            SpanName AS RootTraceName,
+            ServiceName AS RootServiceName,
             toUnixTimestamp64Nano(Timestamp) as StartTimeUnixNano,
             Duration as DurationNano,
             StatusCode

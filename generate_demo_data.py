@@ -13,9 +13,11 @@ import json
 from datetime import datetime
 
 # Pointing to OTel Collector HTTP Receiver
-OTEL_COLLECTOR_URL = "http://46.62.229.59:4318"
+# Use env var or default to localhost
+import os
+OTEL_COLLECTOR_URL = os.getenv("OTEL_COLLECTOR_URL", "http://localhost:4318")
 
-TENANTS = ['acme', 'globex', 'initech']
+TENANTS = ['acme', 'globex', 'initech', 'Tourni1010', 'rosseta']
 SERVICES = ['web-app', 'api-server', 'payment-service', 'inventory-service']
 
 # ==========================================
