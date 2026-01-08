@@ -282,24 +282,7 @@ const TracesPanel: React.FC<TracesPanelProps> = ({ tenantId, refreshKey, highlig
     return flattenTree(roots, 0);
   };
 
-  if (loading && traces.length === 0) {
-    return (
-      <div className="obs-traces-loading">
-        <div className="obs-loading-spinner" />
-        <span>Loading traces...</span>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="obs-traces-error">
-        <AlertCircle className="obs-error-icon" />
-        {error}
-      </div>
-    );
-  }
-
+  // ======= HOOKS MUST BE BEFORE ANY RETURNS =======
   // Extract unique values for filter dropdowns
   const uniqueServices = useMemo(() => {
     const services = [...new Set(traces.map(t => t.rootServiceName))].filter(Boolean);
@@ -311,7 +294,7 @@ const TracesPanel: React.FC<TracesPanelProps> = ({ tenantId, refreshKey, highlig
     return ops.sort();
   }, [traces]);
 
-  // Duration categories
+  // Duration categories helper (not a hook)
   const getDurationCategory = (ms: number): string => {
     if (ms < 100) return 'fast';
     if (ms < 500) return 'medium';
@@ -367,6 +350,25 @@ const TracesPanel: React.FC<TracesPanelProps> = ({ tenantId, refreshKey, highlig
   };
 
   const maxDuration = Math.max(...traces.map(t => t.durationMs), 500);
+
+  // ======= EARLY RETURNS AFTER ALL HOOKS =======
+  if (loading && traces.length === 0) {
+    return (
+      <div className="obs-traces-loading">
+        <div className="obs-loading-spinner" />
+        <span>Loading traces...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="obs-traces-error">
+        <AlertCircle className="obs-error-icon" />
+        {error}
+      </div>
+    );
+  }
 
   return (
     <div className="obs-traces-panel">
