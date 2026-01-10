@@ -1803,9 +1803,7 @@ def delete_traces():
             "success": True, 
             "message": f"Deleted {traces_to_delete} traces",
             "deleted_count": traces_to_delete,
-                "start": start_time_str,
-                "end": end_time_str
-            }
+            "remaining": remaining
         }), 200
         
     except ValueError as e:
