@@ -38,7 +38,8 @@ interface CorrelatedViewProps {
     onClose: () => void;
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001';
+// Use relative path for production (Nginx proxies /api to backend)
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 const CorrelatedView: React.FC<CorrelatedViewProps> = ({ traceId, tenantId, onClose }) => {
     const [data, setData] = useState<CorrelatedData | null>(null);

@@ -66,8 +66,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-      args:
-        - VITE_API_BASE_URL=${VITE_API_BASE_URL:-http://localhost:5001}
+      # No VITE_API_BASE_URL - use relative paths for Nginx proxying
     container_name: obsera-frontend
     ports:
       - "3001:80"
