@@ -865,31 +865,93 @@ def correlate_telemetry(trace_id):
             "duration_ms": trace_duration_ms
         }
         
-        # 2. Get Logs (Correlated by Trace ID - Trivial in CH)
-        # We can also search by time range and service as fallback, but TraceID is best.
-        # ClickHouse otel_logs has TraceId column.
-        log_query = """
-            SELECT Timestamp, SeverityText, Body, ServiceName, TraceId
+        # 2. Get Logs (Exact correlation + Fuzzy fallback)
+        logs = []
+        seen_logs = set() # To prevent duplicates if we find same log via both methods
+
+        # 2a. Exact Match (TraceID)
+        log_query_exact = """
+            SELECT Timestamp, SeverityText, Body, ServiceName, TraceId, ResourceAttributes
             FROM otel_logs
             WHERE TraceId = %(trace_id)s
             ORDER BY Timestamp ASC
         """
-        logs = ch.execute_query(log_query, {'trace_id': trace_id})
+        exact_logs = ch.execute_query(log_query_exact, {'trace_id': trace_id})
         
+        for log in exact_logs:
+            # Create unique signature
+            log_sig = (log['Timestamp'], log['Body'], log['ServiceName'])
+            if log_sig not in seen_logs:
+                seen_logs.add(log_sig)
+                ts_ns = int(log['Timestamp'].timestamp() * 1e9)
+                logs.append({
+                    "timestamp": ts_ns,
+                    "message": log['Body'],
+                    "level": log['SeverityText'],
+                    "service": log['ServiceName'],
+                    "trace_id": log['TraceId'],
+                    "correlation_type": "exact"
+                })
+
+        # 2b. Fuzzy Match (Time + Tenant + Service) - Only if exact matches are sparse (< 5)
+        # or always? User requested "live users info" so let's do it always but mark as fuzzy.
+        
+        # Get services involved in trace
+        trace_services = set(s['attributes'].get('service.name', 'unknown') for s in spans)
+        trace_services.discard('unknown')
+        
+        if trace_services:
+            # Expand window by 2 seconds
+            fuzzy_start = datetime.fromtimestamp(start_ns / 1e9) - timedelta(seconds=2)
+            fuzzy_end = datetime.fromtimestamp(end_ns / 1e9) + timedelta(seconds=2)
+            
+            # Format services for SQL IN clause
+            services_list = list(trace_services)
+            
+            log_query_fuzzy = """
+                SELECT Timestamp, SeverityText, Body, ServiceName, TraceId
+                FROM otel_logs
+                WHERE ResourceAttributes['tenant_id'] = %(tenant_id)s
+                AND ServiceName IN %(services)s
+                AND Timestamp BETWEEN %(start)s AND %(end)s
+                AND TraceId = '' -- Only get unrelated ones to avoid heavy duplication logic
+                ORDER BY Timestamp ASC
+                LIMIT 100
+            """
+            
+            fuzzy_logs_raw = ch.execute_query(log_query_fuzzy, {
+                'tenant_id': tenant_id,
+                'services': services_list,
+                'start': fuzzy_start,
+                'end': fuzzy_end
+            })
+            
+            for log in fuzzy_logs_raw:
+                ts_ns = int(log['Timestamp'].timestamp() * 1e9)
+                log_sig = (log['Timestamp'], log['Body'], log['ServiceName'])
+                
+                if log_sig not in seen_logs:
+                    seen_logs.add(log_sig)
+                    logs.append({
+                        "timestamp": ts_ns,
+                        "message": log['Body'],
+                        "level": log['SeverityText'],
+                        "service": log['ServiceName'],
+                        "trace_id": log['TraceId'] or "(inferred)",
+                        "correlation_type": "fuzzy"
+                    })
+
+        # Sort combined logs by time
+        logs.sort(key=lambda x: x['timestamp'])
+        
+        result["logs"] = logs
+        
+        # Add to timeline
         for log in logs:
-            ts_ns = int(log['Timestamp'].timestamp() * 1e9)
-            log_entry = {
-                "timestamp": ts_ns,
-                "message": log['Body'],
-                "level": log['SeverityText'],
-                "service": log['ServiceName'],
-                "trace_id": log['TraceId']
-            }
-            result["logs"].append(log_entry)
-            result["timeline"].append({
+             result["timeline"].append({
                 "type": "log",
-                "timestamp": ts_ns,
-                "data": log_entry
+                "timestamp": log['timestamp'],
+                "data": log
             })
             
         # 3. Get Metrics (Range based correlation)
