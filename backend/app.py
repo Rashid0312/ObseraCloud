@@ -905,23 +905,23 @@ def correlate_telemetry(trace_id):
             fuzzy_start = datetime.fromtimestamp(start_ns / 1e9) - timedelta(seconds=2)
             fuzzy_end = datetime.fromtimestamp(end_ns / 1e9) + timedelta(seconds=2)
             
-            # Format services for SQL IN clause
-            services_list = list(trace_services)
+            # Manually format services for SQL IN clause to avoid driver parameter issues
+            # Escape single quotes just in case
+            formatted_services = ", ".join(f"'{s.replace(chr(39), chr(39)*2)}'" for s in trace_services)
             
-            log_query_fuzzy = """
+            log_query_fuzzy = f"""
                 SELECT Timestamp, SeverityText, Body, ServiceName, TraceId
                 FROM otel_logs
                 WHERE ResourceAttributes['tenant_id'] = %(tenant_id)s
-                AND ServiceName IN %(services)s
+                AND ServiceName IN ({formatted_services})
                 AND Timestamp BETWEEN %(start)s AND %(end)s
-                AND TraceId = '' -- Only get unrelated ones to avoid heavy duplication logic
+                AND TraceId = '' -- Only get unrelated ones
                 ORDER BY Timestamp ASC
                 LIMIT 100
             """
             
             fuzzy_logs_raw = ch.execute_query(log_query_fuzzy, {
                 'tenant_id': tenant_id,
-                'services': services_list,
                 'start': fuzzy_start,
                 'end': fuzzy_end
             })
