@@ -94,6 +94,16 @@ CREATE TABLE IF NOT EXISTS otel_metrics_gauge (
     ScopeDroppedAttrCount UInt32 DEFAULT 0 CODEC(ZSTD(1)), -- Added for OTel 1.x compatibility
     MetricDescription String DEFAULT '' CODEC(ZSTD(1)), -- Added for OTel 1.x compatibility
     MetricUnit String DEFAULT '' CODEC(ZSTD(1)), -- Added for OTel 1.x compatibility
+    StartTimeUnix DateTime64(9) CODEC(Delta, ZSTD(1)), -- Added for OTel 1.x compatibility
+    TimeUnix DateTime64(9) CODEC(Delta, ZSTD(1)), -- Added for OTel 1.x compatibility
+    Flags UInt32 DEFAULT 0 CODEC(ZSTD(1)), -- Added for OTel 1.x compatibility
+    Exemplars Nested(
+        FilteredAttributes Map(String, String),
+        TimeUnix DateTime64(9),
+        Value Float64,
+        SpanId String,
+        TraceId String
+    ) CODEC(ZSTD(1)), -- Added for OTel 1.x compatibility
     Value Float64 CODEC(ZSTD(1))
 ) ENGINE = MergeTree()
 PARTITION BY toDate(Timestamp)
@@ -114,6 +124,16 @@ CREATE TABLE IF NOT EXISTS otel_metrics_sum (
     ScopeDroppedAttrCount UInt32 DEFAULT 0 CODEC(ZSTD(1)), -- Added for OTel 1.x compatibility
     MetricDescription String DEFAULT '' CODEC(ZSTD(1)), -- Added for OTel 1.x compatibility
     MetricUnit String DEFAULT '' CODEC(ZSTD(1)), -- Added for OTel 1.x compatibility
+    StartTimeUnix DateTime64(9) CODEC(Delta, ZSTD(1)), -- Added for OTel 1.x compatibility
+    TimeUnix DateTime64(9) CODEC(Delta, ZSTD(1)), -- Added for OTel 1.x compatibility
+    Flags UInt32 DEFAULT 0 CODEC(ZSTD(1)), -- Added for OTel 1.x compatibility
+    Exemplars Nested(
+        FilteredAttributes Map(String, String),
+        TimeUnix DateTime64(9),
+        Value Float64,
+        SpanId String,
+        TraceId String
+    ) CODEC(ZSTD(1)), -- Added for OTel 1.x compatibility
     Value Float64 CODEC(ZSTD(1)),
     IsMonotonic Boolean CODEC(ZSTD(1)),
     AggregationTemporality String CODEC(ZSTD(1))
@@ -136,6 +156,16 @@ CREATE TABLE IF NOT EXISTS otel_metrics_histogram (
     ScopeDroppedAttrCount UInt32 DEFAULT 0 CODEC(ZSTD(1)), -- Added for OTel 1.x compatibility
     MetricDescription String DEFAULT '' CODEC(ZSTD(1)), -- Added for OTel 1.x compatibility
     MetricUnit String DEFAULT '' CODEC(ZSTD(1)), -- Added for OTel 1.x compatibility
+    StartTimeUnix DateTime64(9) CODEC(Delta, ZSTD(1)), -- Added for OTel 1.x compatibility
+    TimeUnix DateTime64(9) CODEC(Delta, ZSTD(1)), -- Added for OTel 1.x compatibility
+    Flags UInt32 DEFAULT 0 CODEC(ZSTD(1)), -- Added for OTel 1.x compatibility
+    Exemplars Nested(
+        FilteredAttributes Map(String, String),
+        TimeUnix DateTime64(9),
+        Value Float64,
+        SpanId String,
+        TraceId String
+    ) CODEC(ZSTD(1)), -- Added for OTel 1.x compatibility
     Count UInt64 CODEC(ZSTD(1)),
     Sum Float64 CODEC(ZSTD(1)),
     BucketCounts Array(UInt64) CODEC(ZSTD(1)),
