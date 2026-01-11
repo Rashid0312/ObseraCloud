@@ -18,7 +18,7 @@ INSERT INTO tenants (tenant_id, company_name, email, password_hash, api_key, is_
     ('admin', 'ObseraCloud Admin', 'admin@obsera.cloud', '$2b$12$4aO4aZhCACOZcGRALmZdY.FGgQgPZnsplhg1Sy8D8uQlGK7XreQmm', 'admin_key_super_secret_123', TRUE)
 ON CONFLICT (tenant_id) DO NOTHING;
 
--- Demo tenants (password: demo123, except Tourni1010: Broly1900, rosseta: demo123)
+-- Demo tenants (password: demo123)
 INSERT INTO tenants (tenant_id, company_name, email, password_hash, api_key, is_active) VALUES 
     ('acme', 'Acme Corporation', 'admin@acme.com', '$2b$12$YQeYhPOecgEVhVs3lRINruTI/dFTQquTlfKokGcgTNM5OOCsENmLW', 'acme_api_key_12345', TRUE),
     ('globex', 'Globex Industries', 'admin@globex.com', '$2b$12$YQeYhPOecgEVhVs3lRINruTI/dFTQquTlfKokGcgTNM5OOCsENmLW', 'globex_api_key_67890', TRUE),

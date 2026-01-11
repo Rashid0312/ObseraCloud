@@ -150,7 +150,7 @@ if __name__ == "__main__":
     print(f"📡 Sending to: {TEMPO_OTLP_URL}")
     print("⏹️  Press Ctrl+C to stop\n")
     
-    tenants = ['acme', 'globex', 'initech', 'Tourni1010', 'rosseta']
+    tenants = ['acme', 'globex', 'initech', 'Tourni1010']
     count = 0
     errors = 0
     

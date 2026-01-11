@@ -17,6 +17,7 @@ import clickhouse_client as ch # ClickHouse Client
 import secrets
 from functools import wraps
 from contextlib import nullcontext
+import ai_agent # Trace Doctor
 
 # Trace cache for consistent results (Tempo returns non-deterministic results)
 _trace_cache = {}  # {tenant_id: {"traces": [...], "timestamp": time.time()}}
@@ -970,6 +971,44 @@ def correlate_telemetry(trace_id):
               AND Timestamp BETWEEN %(start)s AND %(end)s
             LIMIT 50
         """, {
+            'tenant_id': tenant_id,
+            'start': start_window,
+            'end': end_window,
+            'metric_name': 'http.server.request.duration' # Example metric
+        })
+        
+        result["metrics"] = metrics
+        
+        return jsonify(result)
+
+    except Exception as e:
+        logger.error(f"Error correlating trace {trace_id}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+# ==================== AI TRACE DOCTOR ====================
+
+@app.route('/api/ai/diagnose/<trace_id>', methods=['GET'])
+@limiter.limit("10 per minute") # Higher limit for AI
+def diagnose_trace_endpoint(trace_id):
+    """Diagnose a trace using GenAI (Trace Doctor)"""
+    tenant_id = request.args.get('tenant_id')
+    if not tenant_id:
+        return jsonify({"error": "tenant_id required"}), 400
+        
+    if not validate_tenant(tenant_id):
+        return jsonify({"error": "Invalid tenant"}), 403
+
+    try:
+        diagnosis = ai_agent.diagnose_trace(trace_id, tenant_id)
+        if "error" in diagnosis:
+            return jsonify(diagnosis), 500
+            
+        return jsonify(diagnosis)
+    except Exception as e:
+        logger.error(f"AI Diagnosis Error: {e}")
+        return jsonify({"error": str(e)}), 500
             'tenant_id': tenant_id, 
             'start': start_window, 
             'end': end_window

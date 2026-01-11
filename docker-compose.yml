@@ -41,9 +41,7 @@ services:
       - FLASK_ENV=${FLASK_ENV:-production}
       - DATABASE_URL=postgresql://${POSTGRES_USER:-obsera_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-obsera}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:?JWT_SECRET_KEY is required}
-      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
-      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - GEMINI_API_KEY=AIzaSyBA0xuVetdFtKhv2IWrU3xGUeRFoJgQC7c
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - GROQ_API_KEY=${GROQ_API_KEY:-}
       - CLICKHOUSE_HOST=clickhouse
