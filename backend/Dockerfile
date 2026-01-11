@@ -7,4 +7,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-CMD ["python", "-m", "gunicorn", "--bind", "0.0.0.0:5000", "--chdir", "/app", "app:app"]
+CMD ["opentelemetry-instrument", "python", "-m", "gunicorn", "--bind", "0.0.0.0:5000", "--chdir", "/app", "app:app"]

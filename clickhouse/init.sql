@@ -86,6 +86,14 @@ CREATE TABLE IF NOT EXISTS otel_metrics_gauge (
     ServiceName LowCardinality(String) CODEC(ZSTD(1)),
     ResourceAttributes Map(String, String) CODEC(ZSTD(1)), -- Added
     Attributes Map(String, String) CODEC(ZSTD(1)),
+    ResourceSchemaUrl String CODEC(ZSTD(1)), -- Added for OTel 1.x compatibility
+    ScopeName String CODEC(ZSTD(1)), -- Added for OTel 1.x compatibility
+    ScopeVersion String CODEC(ZSTD(1)), -- Added for OTel 1.x compatibility
+    ScopeAttributes Map(String, String) CODEC(ZSTD(1)), -- Added for OTel 1.x compatibility
+    ScopeSchemaUrl String CODEC(ZSTD(1)), -- Added for OTel 1.x compatibility
+    ScopeDroppedAttrCount UInt32 DEFAULT 0 CODEC(ZSTD(1)), -- Added for OTel 1.x compatibility
+    MetricDescription String DEFAULT '' CODEC(ZSTD(1)), -- Added for OTel 1.x compatibility
+    MetricUnit String DEFAULT '' CODEC(ZSTD(1)), -- Added for OTel 1.x compatibility
     Value Float64 CODEC(ZSTD(1))
 ) ENGINE = MergeTree()
 PARTITION BY toDate(Timestamp)
@@ -98,6 +106,14 @@ CREATE TABLE IF NOT EXISTS otel_metrics_sum (
     ServiceName LowCardinality(String) CODEC(ZSTD(1)),
     ResourceAttributes Map(String, String) CODEC(ZSTD(1)), -- Added
     Attributes Map(String, String) CODEC(ZSTD(1)),
+    ResourceSchemaUrl String CODEC(ZSTD(1)), -- Added for OTel 1.x compatibility
+    ScopeName String CODEC(ZSTD(1)), -- Added for OTel 1.x compatibility
+    ScopeVersion String CODEC(ZSTD(1)), -- Added for OTel 1.x compatibility
+    ScopeAttributes Map(String, String) CODEC(ZSTD(1)), -- Added for OTel 1.x compatibility
+    ScopeSchemaUrl String CODEC(ZSTD(1)), -- Added for OTel 1.x compatibility
+    ScopeDroppedAttrCount UInt32 DEFAULT 0 CODEC(ZSTD(1)), -- Added for OTel 1.x compatibility
+    MetricDescription String DEFAULT '' CODEC(ZSTD(1)), -- Added for OTel 1.x compatibility
+    MetricUnit String DEFAULT '' CODEC(ZSTD(1)), -- Added for OTel 1.x compatibility
     Value Float64 CODEC(ZSTD(1)),
     IsMonotonic Boolean CODEC(ZSTD(1)),
     AggregationTemporality String CODEC(ZSTD(1))
@@ -112,6 +128,14 @@ CREATE TABLE IF NOT EXISTS otel_metrics_histogram (
     ServiceName LowCardinality(String) CODEC(ZSTD(1)),
     ResourceAttributes Map(String, String) CODEC(ZSTD(1)), -- Added
     Attributes Map(String, String) CODEC(ZSTD(1)),
+    ResourceSchemaUrl String CODEC(ZSTD(1)), -- Added for OTel 1.x compatibility
+    ScopeName String CODEC(ZSTD(1)), -- Added for OTel 1.x compatibility
+    ScopeVersion String CODEC(ZSTD(1)), -- Added for OTel 1.x compatibility
+    ScopeAttributes Map(String, String) CODEC(ZSTD(1)), -- Added for OTel 1.x compatibility
+    ScopeSchemaUrl String CODEC(ZSTD(1)), -- Added for OTel 1.x compatibility
+    ScopeDroppedAttrCount UInt32 DEFAULT 0 CODEC(ZSTD(1)), -- Added for OTel 1.x compatibility
+    MetricDescription String DEFAULT '' CODEC(ZSTD(1)), -- Added for OTel 1.x compatibility
+    MetricUnit String DEFAULT '' CODEC(ZSTD(1)), -- Added for OTel 1.x compatibility
     Count UInt64 CODEC(ZSTD(1)),
     Sum Float64 CODEC(ZSTD(1)),
     BucketCounts Array(UInt64) CODEC(ZSTD(1)),
