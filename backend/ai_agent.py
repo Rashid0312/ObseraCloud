@@ -12,8 +12,9 @@ if api_key:
     genai.configure(api_key=api_key)
 
 # We use the 'flash' model for speed and low cost
+MODEL_NAME = "gemini-1.5-pro-latest"
 try:
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    model = genai.GenerativeModel(MODEL_NAME)
 except Exception as e:
     logger.warning(f"Failed to initialize Gemini model: {e}")
     model = None
