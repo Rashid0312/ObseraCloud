@@ -37,8 +37,9 @@ ssh root@46.62.229.59 << EOF
 
     cd SkyView
     
-    echo "⬇️  Pulling latest code..."
-    git pull origin main
+    echo "⬇️  Pulling latest code (Force Reset)..."
+    git fetch origin
+    git reset --hard origin/main
     
     echo "🧹 Cleaning up conflicting services..."
     docker stop rosetta-frontend rosetta-backend || true
