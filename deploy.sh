@@ -40,6 +40,9 @@ ssh root@46.62.229.59 << EOF
     echo "⬇️  Pulling latest code..."
     git pull origin main
     
+    echo "🧹 Cleaning up conflicting services..."
+    docker stop rosetta-frontend rosetta-backend || true
+    
     echo "🔨 Rebuilding Services..."
     # Using 'docker compose' (v2) as confirmed on server
     docker compose up -d --build --remove-orphans
