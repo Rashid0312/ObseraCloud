@@ -393,10 +393,10 @@ const MetricsChart: React.FC<MetricsChartProps> = ({ tenantId, refreshKey }) => 
             <div className="obs-card-expanded">
               <ResponsiveContainer width="100%" height={120}>
                 <AreaChart data={prepareChartData('http_requests_total')}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 12%, 20%)" />
-                  <XAxis dataKey="time" stroke="hsl(220, 10%, 40%)" fontSize={10} />
-                  <YAxis stroke="hsl(220, 10%, 40%)" fontSize={10} />
-                  <Area type="monotone" dataKey="value" stroke="hsl(210, 80%, 55%)" fill="hsl(210, 80%, 55%)" fillOpacity={0.3} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
+                  <XAxis dataKey="time" stroke="rgba(255, 255, 255, 0.3)" fontSize={10} tick={{ fill: 'rgba(255, 255, 255, 0.5)' }} />
+                  <YAxis stroke="rgba(255, 255, 255, 0.3)" fontSize={10} tick={{ fill: 'rgba(255, 255, 255, 0.5)' }} />
+                  <Area type="monotone" dataKey="value" stroke="var(--primary)" fill="var(--primary)" fillOpacity={0.2} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -601,30 +601,32 @@ const MetricsChart: React.FC<MetricsChartProps> = ({ tenantId, refreshKey }) => 
               <AreaChart data={combinedChartData}>
                 <defs>
                   <linearGradient id="requestsGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="hsl(210, 100%, 60%)" stopOpacity={0.5} />
-                    <stop offset="100%" stopColor="hsl(210, 100%, 45%)" stopOpacity={0.05} />
+                    <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.6} />
+                    <stop offset="100%" stopColor="var(--primary)" stopOpacity={0.1} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 12%, 20%)" vertical={false} />
-                <XAxis dataKey="time" stroke="hsl(220, 10%, 45%)" fontSize={11} tickLine={false} />
-                <YAxis stroke="hsl(220, 10%, 45%)" fontSize={11} tickLine={false} axisLine={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" vertical={false} />
+                <XAxis dataKey="time" stroke="rgba(255, 255, 255, 0.3)" fontSize={11} tickLine={false} tick={{ fill: 'rgba(255, 255, 255, 0.5)' }} />
+                <YAxis stroke="rgba(255, 255, 255, 0.3)" fontSize={11} tickLine={false} axisLine={false} tick={{ fill: 'rgba(255, 255, 255, 0.5)' }} />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: 'hsl(220, 15%, 10%)',
-                    border: '1px solid hsl(210, 80%, 50%)',
+                    backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                    border: '1px solid var(--border)',
                     borderRadius: '8px',
                     boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+                    color: 'var(--foreground)'
                   }}
+                  itemStyle={{ color: 'var(--foreground)' }}
                   formatter={(value: number) => [`${value} requests`, 'Requests']}
                 />
                 <Area
                   type="monotone"
                   dataKey="requests"
-                  stroke="hsl(210, 100%, 60%)"
+                  stroke="var(--primary)"
                   fill="url(#requestsGradient)"
-                  strokeWidth={3}
-                  dot={{ fill: 'hsl(210, 100%, 60%)', strokeWidth: 2, r: 3 }}
-                  activeDot={{ r: 6, stroke: 'hsl(210, 100%, 70%)', strokeWidth: 2 }}
+                  strokeWidth={2}
+                  dot={{ fill: 'var(--primary)', strokeWidth: 2, r: 3 }}
+                  activeDot={{ r: 6, stroke: 'var(--primary)', strokeWidth: 2 }}
                 />
               </AreaChart>
             </ResponsiveContainer>
@@ -648,27 +650,29 @@ const MetricsChart: React.FC<MetricsChartProps> = ({ tenantId, refreshKey }) => 
               <BarChart data={combinedChartData}>
                 <defs>
                   <linearGradient id="errorsGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="hsl(0, 85%, 60%)" stopOpacity={1} />
-                    <stop offset="100%" stopColor="hsl(0, 70%, 40%)" stopOpacity={0.8} />
+                    <stop offset="0%" stopColor="var(--error)" stopOpacity={0.8} />
+                    <stop offset="100%" stopColor="var(--error)" stopOpacity={0.3} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 12%, 20%)" vertical={false} />
-                <XAxis dataKey="time" stroke="hsl(220, 10%, 45%)" fontSize={11} tickLine={false} />
-                <YAxis stroke="hsl(220, 10%, 45%)" fontSize={11} tickLine={false} axisLine={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" vertical={false} />
+                <XAxis dataKey="time" stroke="rgba(255, 255, 255, 0.3)" fontSize={11} tickLine={false} tick={{ fill: 'rgba(255, 255, 255, 0.5)' }} />
+                <YAxis stroke="rgba(255, 255, 255, 0.3)" fontSize={11} tickLine={false} axisLine={false} tick={{ fill: 'rgba(255, 255, 255, 0.5)' }} />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: 'hsl(220, 15%, 10%)',
-                    border: '1px solid hsl(0, 70%, 50%)',
+                    backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                    border: '1px solid var(--border)',
                     borderRadius: '8px',
                     boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+                    color: 'var(--foreground)'
                   }}
+                  itemStyle={{ color: 'var(--foreground)' }}
                   formatter={(value: number) => [`${value} errors`, 'Errors']}
                 />
                 <Bar
                   dataKey="errors"
                   fill="url(#errorsGradient)"
                   name="Errors"
-                  radius={[6, 6, 0, 0]}
+                  radius={[4, 4, 0, 0]}
                 />
               </BarChart>
             </ResponsiveContainer>

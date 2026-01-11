@@ -176,7 +176,7 @@ def get_trace_spans(trace_id):
     return execute_query(query, params)
 
 def get_metrics_sum(tenant_id, metric_name, start_time, end_time):
-    """Fetch metric points"""
+    """Fetch metric points from appropriate tables"""
     params = {
         'tenant_id': tenant_id,
         'metric_name': metric_name,
@@ -184,15 +184,28 @@ def get_metrics_sum(tenant_id, metric_name, start_time, end_time):
         'end': end_time
     }
     
+    # Query both Sum and Gauge tables as metrics might be in either
     query = """
         SELECT 
-            toUnixTimestamp(Timestamp) as TimestampUnix,
+            toUnixTimestamp(TimeUnix) as TimestampUnix,
+            Value,
+            Attributes
+        FROM otel_metrics_sum
+        WHERE (ResourceAttributes['tenant_id'] = %(tenant_id)s OR Attributes['tenant_id'] = %(tenant_id)s)
+          AND MetricName = %(metric_name)s
+          AND TimeUnix BETWEEN %(start)s AND %(end)s
+        
+        UNION ALL
+        
+        SELECT 
+            toUnixTimestamp(TimeUnix) as TimestampUnix,
             Value,
             Attributes
         FROM otel_metrics_gauge
-        WHERE ResourceAttributes['tenant_id'] = %(tenant_id)s
+        WHERE (ResourceAttributes['tenant_id'] = %(tenant_id)s OR Attributes['tenant_id'] = %(tenant_id)s)
           AND MetricName = %(metric_name)s
-          AND Timestamp BETWEEN %(start)s AND %(end)s
-        ORDER BY Timestamp ASC
+          AND TimeUnix BETWEEN %(start)s AND %(end)s
+          
+        ORDER BY TimestampUnix ASC
     """
     return execute_query(query, params)

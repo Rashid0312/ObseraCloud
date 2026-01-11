@@ -39,6 +39,44 @@ CORS(app, resources={
     }
 })
 
+# ==================== TELEMETRY SETUP (MANUAL) ====================
+from opentelemetry import metrics
+from opentelemetry.sdk.metrics import MeterProvider
+from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
+from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
+from opentelemetry.sdk.resources import Resource
+
+# Explicitly configure the MeterProvider to ensure it's not No-Op
+# We need to ensure we point to the collector defined in env
+collector_endpoint = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://otel-collector:4317")
+if not collector_endpoint.startswith("http"):
+     collector_endpoint = f"http://{collector_endpoint}"
+
+reader = PeriodicExportingMetricReader(
+    OTLPMetricExporter(endpoint=collector_endpoint, insecure=True)
+)
+provider = MeterProvider(resource=Resource.create({"service.name": "obsera-backend-manual"}), metric_readers=[reader])
+metrics.set_meter_provider(provider)
+
+meter = metrics.get_meter("obsera.backend.manual")
+
+# Define metrics matching frontend expectations
+request_counter = meter.create_counter(
+    "http_requests_total", 
+    description="Total HTTP requests"
+)
+
+error_counter = meter.create_counter(
+    "http_errors_total", 
+    description="Total HTTP errors"
+)
+
+duration_histogram = meter.create_histogram(
+    "http_response_time_seconds", 
+    unit="s", 
+    description="Response time in seconds"
+)
+
 # Rate Limiter Configuration
 limiter = Limiter(
     key_func=get_remote_address,
@@ -67,7 +105,46 @@ def add_security_headers(response):
     response.headers['X-Frame-Options'] = 'DENY'
     response.headers['X-XSS-Protection'] = '1; mode=block'
     response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate'
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate'
+    
+    # MANUAL METRICS RECORDING
+    try:
+        tenant_id = getattr(g, 'tenant_id', 'unknown')
+        if tenant_id != 'unknown':
+             logger.info(f"Recording metric for tenant: {tenant_id}")
+        else:
+             # Debugging why it might be unknown
+             logger.warning(f"Recording metric for UNKNOWN tenant. Path: {request.path}")
+
+        status_code = response.status_code
+        
+        # Tags
+        tags = {
+            "tenant_id": tenant_id, 
+            "method": request.method, 
+            "status_code": str(status_code)
+        }
+        
+        # 1. Requests Total
+        request_counter.add(1, tags)
+        
+        # 2. Errors Total (if applicable)
+        if status_code >= 400:
+            error_counter.add(1, tags)
+            
+        # 3. Duration
+        if hasattr(request, 'start_time'):
+            duration_s = time.time() - request.start_time
+            duration_histogram.record(duration_s, tags)
+            
+    except Exception as e:
+        logger.error(f"Metrics recording failed: {e}")
+        
     return response
+
+@app.before_request
+def before_request():
+    request.start_time = time.time()
 
 def validate_api_key(api_key):
     """Validate API key against database"""
