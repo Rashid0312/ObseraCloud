@@ -136,7 +136,7 @@ CREATE TABLE IF NOT EXISTS otel_metrics_sum (
     ) CODEC(ZSTD(1)), -- Added for OTel 1.x compatibility
     Value Float64 CODEC(ZSTD(1)),
     IsMonotonic Boolean CODEC(ZSTD(1)),
-    AggregationTemporality String CODEC(ZSTD(1))
+    AggregationTemporality Int32 CODEC(ZSTD(1)) -- Changed to Int32
 ) ENGINE = MergeTree()
 PARTITION BY toDate(Timestamp)
 ORDER BY (ServiceName, MetricName, Timestamp)
@@ -170,7 +170,9 @@ CREATE TABLE IF NOT EXISTS otel_metrics_histogram (
     Sum Float64 CODEC(ZSTD(1)),
     BucketCounts Array(UInt64) CODEC(ZSTD(1)),
     ExplicitBounds Array(Float64) CODEC(ZSTD(1)),
-    AggregationTemporality String CODEC(ZSTD(1))
+    AggregationTemporality Int32 CODEC(ZSTD(1)), -- Changed to Int32
+    Min Float64 CODEC(ZSTD(1)), -- Added
+    Max Float64 CODEC(ZSTD(1))  -- Added
 ) ENGINE = MergeTree()
 PARTITION BY toDate(Timestamp)
 ORDER BY (ServiceName, MetricName, Timestamp)

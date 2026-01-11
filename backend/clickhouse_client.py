@@ -189,7 +189,7 @@ def get_metrics_sum(tenant_id, metric_name, start_time, end_time):
             toUnixTimestamp(Timestamp) as TimestampUnix,
             Value,
             Attributes
-        FROM otel_metrics_sum
+        FROM otel_metrics_gauge
         WHERE ResourceAttributes['tenant_id'] = %(tenant_id)s
           AND MetricName = %(metric_name)s
           AND Timestamp BETWEEN %(start)s AND %(end)s
