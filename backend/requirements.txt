@@ -26,7 +26,6 @@ opentelemetry-semantic-conventions==0.60b1
 opentelemetry-util-http==0.60b1
 packaging==25.0
 prometheus_client==0.23.1
-protobuf==6.33.2
 psycopg2-binary==2.9.11
 PyJWT==2.10.1
 python-dotenv==1.2.1
