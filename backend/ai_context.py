@@ -30,7 +30,7 @@ def flatten_trace_for_ai(trace_id, tenant_id):
                ResourceAttributes['tenant_id'] = %(tenant_id)s
                AND Timestamp BETWEEN toDateTime64(%(start)f, 9) AND toDateTime64(%(end)f, 9)
                AND ServiceName IN %(services)s
-               AND Post_Fix_Logic_Needed = 0 -- Placeholder
+
            )
         ORDER BY Timestamp ASC
         LIMIT 50
