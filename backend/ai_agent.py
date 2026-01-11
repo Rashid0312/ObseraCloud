@@ -12,7 +12,7 @@ if api_key:
     genai.configure(api_key=api_key)
 
 # We use the 'flash' model for speed and low cost
-MODEL_NAME = "gemini-pro"
+MODEL_NAME = "gemini-2.5-flash"
 try:
     model = genai.GenerativeModel(MODEL_NAME)
 except Exception as e:

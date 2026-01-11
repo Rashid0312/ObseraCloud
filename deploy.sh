@@ -47,6 +47,9 @@ ssh root@46.62.229.59 << EOF
     # Using 'docker compose' (v2) as confirmed on server
     docker compose --profile production up -d --build --remove-orphans
     
+    echo "🔄 Forcing Nginx restart to refresh DNS..."
+    docker restart obsera-nginx || true
+    
     echo "🔍 Checking running containers..."
     docker ps
     
