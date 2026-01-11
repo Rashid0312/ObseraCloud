@@ -979,6 +979,15 @@ def correlate_telemetry(trace_id):
         
         result["metrics"] = metrics
         
+        # Sort timeline
+        result["timeline"].sort(key=lambda x: x["timestamp"])
+        
+        # Calculate relative time
+        if result["timeline"]:
+            start_time = result["timeline"][0]["timestamp"]
+            for item in result["timeline"]:
+                item["relative_ms"] = (item["timestamp"] - start_time) / 1_000_000
+
         return jsonify(result)
 
     except Exception as e:
@@ -1009,40 +1018,7 @@ def diagnose_trace_endpoint(trace_id):
     except Exception as e:
         logger.error(f"AI Diagnosis Error: {e}")
         return jsonify({"error": str(e)}), 500
-            'tenant_id': tenant_id, 
-            'start': start_window, 
-            'end': end_window
-        })
-        
-        for m in metrics:
-            ts_ns = int(m['Timestamp'].timestamp() * 1e9)
-            metric_entry = {
-                "timestamp": ts_ns,
-                "name": m['MetricName'],
-                "value": m['Value'],
-                "service": m['ResourceAttributes'].get('service_name', '')
-            }
-            result["metrics"].append(metric_entry)
-            result["timeline"].append({
-                "type": "metric",
-                "timestamp": ts_ns,
-                "data": metric_entry
-            })
-            
-    except Exception as e:
-        logger.error(f"Correlation failed: {e}")
-        # Partial result is better than error
-        
-    # Sort timeline
-    result["timeline"].sort(key=lambda x: x["timestamp"])
-    
-    # Calculate relative time
-    if result["timeline"]:
-        start_time = result["timeline"][0]["timestamp"]
-        for item in result["timeline"]:
-            item["relative_ms"] = (item["timestamp"] - start_time) / 1_000_000
-            
-    return jsonify(result), 200
+
 
 # ==================== HEALTH CHECK ====================
 
