@@ -45,7 +45,10 @@ ssh root@46.62.229.59 << EOF
     
     echo "🔨 Rebuilding Services..."
     # Using 'docker compose' (v2) as confirmed on server
-    docker compose up -d --build --remove-orphans
+    docker compose --profile production up -d --build --remove-orphans
+    
+    echo "🔍 Checking running containers..."
+    docker ps
     
     echo "✨ Server deployment successful!"
 EOF
