@@ -49,8 +49,12 @@ ssh root@46.62.229.59 << EOF
     docker compose --profile production down
 
     echo "🔨 Rebuilding Services (No Cache)..."
-    # Force rebuild without cache and force recreation of containers
-    docker compose --profile production up -d --build --no-cache --force-recreate --remove-orphans
+    # force rebuild first
+    docker compose --profile production build --no-cache
+    
+    echo "🚀 Starting Services..."
+    # then start up
+    docker compose --profile production up -d --force-recreate --remove-orphans
     
     echo "🔄 Forcing Nginx restart to refresh DNS..."
     docker restart obsera-nginx || true
