@@ -209,3 +209,38 @@ def get_metrics_sum(tenant_id, metric_name, start_time, end_time):
         ORDER BY TimestampUnix ASC
     """
     return execute_query(query, params)
+
+def get_all_metrics(tenant_id, start_time, end_time):
+    """Fetch ALL metric points for a tenant from both sum and gauge tables"""
+    params = {
+        'tenant_id': tenant_id,
+        'start': start_time,
+        'end': end_time
+    }
+    
+    # Query both Sum and Gauge tables and include MetricName
+    query = """
+        SELECT 
+            toUnixTimestamp(TimeUnix) as TimestampUnix,
+            MetricName,
+            Value,
+            Attributes
+        FROM otel_metrics_sum
+        WHERE (ResourceAttributes['tenant_id'] = %(tenant_id)s OR Attributes['tenant_id'] = %(tenant_id)s)
+          AND TimeUnix BETWEEN %(start)s AND %(end)s
+        
+        UNION ALL
+        
+        SELECT 
+            toUnixTimestamp(TimeUnix) as TimestampUnix,
+            MetricName,
+            Value,
+            Attributes
+        FROM otel_metrics_gauge
+        WHERE (ResourceAttributes['tenant_id'] = %(tenant_id)s OR Attributes['tenant_id'] = %(tenant_id)s)
+          AND TimeUnix BETWEEN %(start)s AND %(end)s
+          
+        ORDER BY TimestampUnix ASC
+    """
+    return execute_query(query, params)
+

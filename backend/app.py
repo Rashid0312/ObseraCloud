@@ -559,7 +559,6 @@ def get_logs():
 def get_metrics():
     """Query metrics from ClickHouse"""
     tenant_id = request.args.get('tenant_id')
-    metric_name = request.args.get('metric', '')
     hours = float(request.args.get('hours', '1'))
     
     if not tenant_id:
@@ -570,35 +569,49 @@ def get_metrics():
     if not is_valid:
         return error_response
 
-    # Default to http_requests_total if not specified
-    if not metric_name:
-        metric_name = 'http_requests_total'
-
     end_time = datetime.now()
     start_time = end_time - timedelta(hours=hours)
     
     try:
-        # Use ClickHouse Client (Points are pre-aggregated by OTel Collector usually or raw)
-        # We query the raw points for now
-        points = ch.get_metrics_sum(
+        # Fetch ALL metrics for this tenant (not filtered by metric_name)
+        points = ch.get_all_metrics(
             tenant_id=tenant_id,
-            metric_name=metric_name,
             start_time=start_time,
             end_time=end_time
         )
         
+        # Map OTEL metric names to frontend expected names
+        # Frontend expects: http_requests_total, http_errors_total, http_response_time_seconds
+        metric_name_mapping = {
+            'http.server.requests': 'http_requests_total',
+            'http.server.duration': 'http_response_time_seconds',  # Note: this is in ms, frontend handles conversion
+            'http.server.errors': 'http_errors_total',
+            'http.server.request_count': 'http_requests_total',
+            'http_requests_total': 'http_requests_total',
+            'http_errors_total': 'http_errors_total',
+            'http_response_time_seconds': 'http_response_time_seconds',
+        }
+        
         metrics = []
         for point in points:
-            # Convert to UTC+1 (CET) for display as per original logic
+            # Convert to UTC+1 (CET) for display
             ts = point['TimestampUnix']
             utc_dt = datetime.fromtimestamp(ts, tz=timezone.utc)
             local_dt = utc_dt + timedelta(hours=1)
             
+            original_name = point.get('MetricName', 'unknown')
+            mapped_name = metric_name_mapping.get(original_name, original_name)
+            
+            # For http.server.duration, convert ms to seconds for http_response_time_seconds
+            value = point['Value']
+            if original_name == 'http.server.duration' and value > 0:
+                value = value / 1000.0  # ms to seconds
+            
             metrics.append({
                 "timestamp": local_dt.strftime('%Y-%m-%dT%H:%M:%S'),
-                "metric_name": metric_name,
-                "value": point['Value'],
-                "labels": point['Attributes'] or {}
+                "metric_name": mapped_name,
+                "value": str(value),  # Frontend expects string
+                "labels": point.get('Attributes') or {}
             })
             
         # Sort by timestamp descending
