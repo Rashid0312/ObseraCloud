@@ -88,13 +88,24 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, onGoHome }) => {
 
         const logs = logsData.logs || [];
         const errorLogs = logs.filter((l: any) => l.level?.toLowerCase() === 'error');
-        // metrics are now used for dashboard stats too if needed, but we calculate summary stats here
+
+        // Calculate average response time from trace durations
+        const traces = tracesData.traces || [];
+        let avgResponseTime = 0;
+        if (traces.length > 0) {
+          const totalDuration = traces.reduce((sum: number, t: any) => {
+            // Duration is in nanoseconds, convert to milliseconds
+            const durationMs = (t.Duration || 0) / 1_000_000;
+            return sum + durationMs;
+          }, 0);
+          avgResponseTime = totalDuration / traces.length;
+        }
 
         setStats({
           totalLogs: logs.length,
           errorCount: errorLogs.length,
           errorRate: logs.length > 0 ? (errorLogs.length / logs.length * 100) : 0,
-          avgResponseTime: 0, // Simplified for overview, detailed in metrics
+          avgResponseTime: avgResponseTime,
           activeTraces: tracesData.count || 0
         });
       } catch (err) {
