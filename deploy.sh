@@ -44,9 +44,13 @@ ssh root@46.62.229.59 << EOF
     echo "🧹 Cleaning up conflicting services..."
     docker stop rosetta-frontend rosetta-backend || true
     
-    echo "🔨 Rebuilding Services..."
-    # Using 'docker compose' (v2) as confirmed on server
-    docker compose --profile production up -d --build --remove-orphans
+    # Explicitly stop to ensure recreation
+    echo "🛑 Stopping existing containers..."
+    docker compose --profile production down
+
+    echo "🔨 Rebuilding Services (No Cache)..."
+    # Force rebuild without cache and force recreation of containers
+    docker compose --profile production up -d --build --no-cache --force-recreate --remove-orphans
     
     echo "🔄 Forcing Nginx restart to refresh DNS..."
     docker restart obsera-nginx || true
