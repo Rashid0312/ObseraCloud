@@ -269,16 +269,30 @@ const MetricsChart: React.FC<MetricsChartProps> = ({ tenantId, refreshKey }) => 
   // Calculate stats
   const requestsData = metricsByName['http_requests_total'] || [];
   const errorsData = metricsByName['http_errors_total'] || [];
+  // Support both naming conventions: http_response_time_seconds (in seconds) and http.server.duration (in ms)
   const responseTimeData = metricsByName['http_response_time_seconds'] || [];
+  const durationData = metricsByName['http.server.duration'] || [];
 
+  // Calculate totals
   const totalRequests = requestsData.reduce((sum, m) => sum + parseFloat(m.value), 0);
   const totalErrors = errorsData.reduce((sum, m) => sum + parseFloat(m.value), 0);
 
-  const responseTimes = responseTimeData.map(m => parseFloat(m.value)).filter(v => !isNaN(v));
-  const avgResponseTime = responseTimes.length > 0
-    ? (responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length)
-    : 0;
-  const avgResponseMs = avgResponseTime * 1000;
+  // Calculate from whichever metric is available
+  let avgResponseMs = 0;
+  if (responseTimeData.length > 0) {
+    // http_response_time_seconds is in seconds, convert to ms
+    const respTimes = responseTimeData.map(m => parseFloat(m.value)).filter(v => !isNaN(v));
+    const avgResponseTime = respTimes.reduce((a, b) => a + b, 0) / respTimes.length;
+    avgResponseMs = avgResponseTime * 1000;
+  } else if (durationData.length > 0) {
+    // http.server.duration is already in milliseconds
+    const durations = durationData.map(m => parseFloat(m.value)).filter(v => !isNaN(v));
+    avgResponseMs = durations.reduce((a, b) => a + b, 0) / durations.length;
+  }
+
+  const responseTimes = responseTimeData.length > 0
+    ? responseTimeData.map(m => parseFloat(m.value)).filter(v => !isNaN(v))
+    : durationData.map(m => parseFloat(m.value) / 1000).filter(v => !isNaN(v)); // Convert ms to seconds for percentile calc
 
   // Percentiles
   const sortedTimes = [...responseTimes].sort((a, b) => a - b);
