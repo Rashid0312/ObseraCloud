@@ -1,12 +1,9 @@
-/* Landing Page - Premium Silver Theme */
+/* Landing Page - Uses Global CSS Variables from index.css */
 
 .landing-container {
     min-height: 100vh;
-    background: linear-gradient(165deg,
-            hsl(220 15% 6%) 0%,
-            hsl(220 12% 8%) 40%,
-            hsl(220 15% 7%) 100%);
-    color: hsl(220 10% 85%);
+    background: var(--background);
+    color: var(--foreground);
     position: relative;
     overflow-x: hidden;
 }
@@ -16,8 +13,8 @@
     position: absolute;
     inset: 0;
     background:
-        radial-gradient(ellipse 100% 80% at 50% -30%, hsl(220 15% 25% / 0.08), transparent),
-        radial-gradient(ellipse 60% 50% at 100% 50%, hsl(220 12% 30% / 0.06), transparent);
+        radial-gradient(ellipse 100% 80% at 50% -30%, hsl(from var(--primary) h s l / 0.1), transparent),
+        radial-gradient(ellipse 60% 50% at 100% 50%, hsl(from var(--accent) h s l / 0.08), transparent);
     pointer-events: none;
 }
 
@@ -32,7 +29,7 @@
 .landing-bg-orb-1 {
     width: 800px;
     height: 800px;
-    background: radial-gradient(circle, hsl(220 15% 40% / 0.1) 0%, transparent 70%);
+    background: radial-gradient(circle, hsl(from var(--primary) h s l / 0.12) 0%, transparent 70%);
     top: -300px;
     right: -200px;
 }
@@ -40,7 +37,7 @@
 .landing-bg-orb-2 {
     width: 600px;
     height: 600px;
-    background: radial-gradient(circle, hsl(220 10% 35% / 0.08) 0%, transparent 70%);
+    background: radial-gradient(circle, hsl(from var(--accent) h s l / 0.1) 0%, transparent 70%);
     bottom: -200px;
     left: -150px;
     animation-delay: -15s;
@@ -50,7 +47,7 @@
 .landing-bg-orb-3 {
     width: 400px;
     height: 400px;
-    background: radial-gradient(circle, hsl(220 12% 45% / 0.08) 0%, transparent 70%);
+    background: radial-gradient(circle, hsl(from var(--secondary) h s l / 0.1) 0%, transparent 70%);
     top: 50%;
     left: 30%;
     animation-delay: -8s;
@@ -60,8 +57,8 @@
     position: absolute;
     inset: 0;
     background-image:
-        linear-gradient(hsl(220 15% 20% / 0.03) 1px, transparent 1px),
-        linear-gradient(90deg, hsl(220 15% 20% / 0.03) 1px, transparent 1px);
+        linear-gradient(hsl(from var(--border) h s l / 0.5) 1px, transparent 1px),
+        linear-gradient(90deg, hsl(from var(--border) h s l / 0.5) 1px, transparent 1px);
     background-size: 60px 60px;
     pointer-events: none;
 }
@@ -106,22 +103,22 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, hsl(220 15% 35% / 0.2) 0%, hsl(220 15% 35% / 0.05) 100%);
-    border: 1px solid hsl(220 15% 40% / 0.3);
+    background: linear-gradient(135deg, hsl(from var(--primary) h s l / 0.2) 0%, hsl(from var(--accent) h s l / 0.1) 100%);
+    border: 1px solid hsl(from var(--primary) h s l / 0.3);
     border-radius: 12px;
 }
 
 .landing-logo-icon {
     width: 24px;
     height: 24px;
-    color: hsl(220 15% 75%);
-    filter: drop-shadow(0 0 8px hsl(220 15% 75% / 0.4));
+    color: var(--primary);
+    filter: drop-shadow(0 0 8px hsl(from var(--primary) h s l / 0.5));
 }
 
 .landing-logo-text {
     font-size: 1.5rem;
     font-weight: 700;
-    background: linear-gradient(135deg, hsl(220 10% 95%) 0%, hsl(220 15% 65%) 100%);
+    background: linear-gradient(135deg, var(--foreground) 0%, var(--primary) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -133,7 +130,7 @@
 }
 
 .landing-nav-link {
-    color: hsl(220 10% 55%);
+    color: var(--muted-foreground);
     font-size: 0.9rem;
     font-weight: 500;
     text-decoration: none;
@@ -141,7 +138,7 @@
 }
 
 .landing-nav-link:hover {
-    color: hsl(220 15% 80%);
+    color: var(--foreground);
 }
 
 .landing-login-btn {
@@ -149,21 +146,19 @@
     align-items: center;
     gap: 0.5rem;
     padding: 0.75rem 1.5rem;
-    background: linear-gradient(135deg, hsl(220 15% 35% / 0.15) 0%, hsl(220 15% 35% / 0.05) 100%);
-    border: 1px solid hsl(220 15% 45% / 0.3);
+    background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+    border: none;
     border-radius: 10px;
-    color: hsl(220 15% 80%);
+    color: var(--primary-foreground);
     font-size: 0.9rem;
-    font-weight: 600;
+    font-weight: 700;
     cursor: pointer;
     transition: all 0.3s ease;
 }
 
 .landing-login-btn:hover {
-    background: linear-gradient(135deg, hsl(220 15% 40% / 0.25) 0%, hsl(220 15% 40% / 0.1) 100%);
-    border-color: hsl(220 15% 55% / 0.5);
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px hsl(220 15% 30% / 0.2);
+    box-shadow: 0 8px 25px hsl(from var(--primary) h s l / 0.3);
 }
 
 .landing-btn-arrow {
@@ -197,19 +192,19 @@
     align-items: center;
     gap: 0.5rem;
     padding: 0.5rem 1rem;
-    background: linear-gradient(135deg, hsl(220 12% 15%) 0%, hsl(220 12% 12%) 100%);
-    border: 1px solid hsl(220 15% 30% / 0.5);
+    background: var(--secondary);
+    border: 1px solid hsl(from var(--primary) h s l / 0.3);
     border-radius: 50px;
     font-size: 0.8rem;
     font-weight: 600;
-    color: hsl(220 15% 70%);
+    color: var(--primary);
     margin-bottom: 1.5rem;
 }
 
 .landing-badge-icon {
     width: 14px;
     height: 14px;
-    color: hsl(220 15% 75%);
+    color: var(--primary);
 }
 
 .landing-title {
@@ -217,15 +212,12 @@
     font-weight: 800;
     line-height: 1.08;
     margin-bottom: 1.5rem;
-    color: hsl(220 10% 95%);
+    color: var(--foreground);
     letter-spacing: -0.03em;
 }
 
 .landing-title-highlight {
-    background: linear-gradient(135deg,
-            hsl(220 20% 85%) 0%,
-            hsl(220 15% 60%) 50%,
-            hsl(220 12% 50%) 100%);
+    background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 50%, var(--primary) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -234,7 +226,7 @@
 .landing-subtitle {
     font-size: 1.2rem;
     line-height: 1.7;
-    color: hsl(220 10% 50%);
+    color: var(--muted-foreground);
     margin-bottom: 2.5rem;
     max-width: 520px;
 }
@@ -250,20 +242,20 @@
     align-items: center;
     gap: 0.5rem;
     padding: 1rem 2rem;
-    background: linear-gradient(135deg, hsl(220 15% 45%) 0%, hsl(220 12% 35%) 100%);
+    background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
     border: none;
     border-radius: 12px;
-    color: hsl(220 10% 98%);
+    color: var(--primary-foreground);
     font-size: 1rem;
     font-weight: 700;
     cursor: pointer;
     transition: all 0.3s ease;
-    box-shadow: 0 4px 20px hsl(220 15% 30% / 0.25);
+    box-shadow: 0 4px 20px hsl(from var(--primary) h s l / 0.3);
 }
 
 .landing-cta-primary:hover {
     transform: translateY(-3px);
-    box-shadow: 0 15px 40px hsl(220 15% 30% / 0.35);
+    box-shadow: 0 15px 40px hsl(from var(--primary) h s l / 0.4);
 }
 
 .landing-cta-primary:hover .landing-btn-arrow {
@@ -276,9 +268,9 @@
     gap: 0.5rem;
     padding: 1rem 2rem;
     background: transparent;
-    border: 1px solid hsl(220 12% 25%);
+    border: 1px solid var(--border);
     border-radius: 12px;
-    color: hsl(220 10% 70%);
+    color: var(--foreground);
     font-size: 1rem;
     font-weight: 600;
     cursor: pointer;
@@ -286,8 +278,8 @@
 }
 
 .landing-cta-secondary:hover {
-    background: hsl(220 12% 14%);
-    border-color: hsl(220 12% 35%);
+    background: var(--secondary);
+    border-color: hsl(from var(--primary) h s l / 0.4);
 }
 
 .landing-btn-icon-left {
@@ -300,7 +292,7 @@
     align-items: center;
     gap: 1rem;
     font-size: 0.85rem;
-    color: hsl(220 10% 45%);
+    color: var(--muted-foreground);
 }
 
 .landing-trust-item {
@@ -312,13 +304,13 @@
 .landing-trust-icon {
     width: 14px;
     height: 14px;
-    color: hsl(160 60% 45%);
+    color: var(--success);
 }
 
 .landing-trust-divider {
     width: 4px;
     height: 4px;
-    background: hsl(220 12% 30%);
+    background: var(--border);
     border-radius: 50%;
 }
 
@@ -329,14 +321,14 @@
 }
 
 .landing-dashboard-preview {
-    background: linear-gradient(165deg, hsl(220 12% 11% / 0.95) 0%, hsl(220 12% 8% / 0.98) 100%);
-    border: 1px solid hsl(220 12% 20%);
+    background: var(--card);
+    border: 1px solid var(--border);
     border-radius: 20px;
     overflow: hidden;
     box-shadow:
-        0 40px 80px hsl(220 15% 5% / 0.5),
-        0 0 0 1px hsl(220 15% 50% / 0.08) inset,
-        0 0 100px hsl(220 15% 40% / 0.05);
+        0 40px 80px hsl(from var(--background) h s l / 0.8),
+        0 0 0 1px hsl(from var(--primary) h s l / 0.1) inset,
+        0 0 100px hsl(from var(--primary) h s l / 0.05);
 }
 
 .landing-preview-header {
@@ -344,8 +336,8 @@
     align-items: center;
     gap: 1rem;
     padding: 1rem 1.5rem;
-    background: hsl(220 12% 10%);
-    border-bottom: 1px solid hsl(220 12% 18%);
+    background: var(--secondary);
+    border-bottom: 1px solid var(--border);
 }
 
 .landing-preview-dots {
@@ -357,24 +349,24 @@
     width: 12px;
     height: 12px;
     border-radius: 50%;
-    background: hsl(220 12% 22%);
+    background: var(--muted);
 }
 
 .landing-preview-dots .dot:first-child {
-    background: hsl(0 60% 50%);
+    background: var(--error);
 }
 
 .landing-preview-dots .dot:nth-child(2) {
-    background: hsl(45 80% 55%);
+    background: var(--warning);
 }
 
 .landing-preview-dots .dot:nth-child(3) {
-    background: hsl(140 60% 45%);
+    background: var(--success);
 }
 
 .landing-preview-title {
     font-size: 0.85rem;
-    color: hsl(220 10% 50%);
+    color: var(--muted-foreground);
     font-weight: 500;
     flex: 1;
 }
@@ -384,14 +376,14 @@
     align-items: center;
     gap: 0.4rem;
     font-size: 0.75rem;
-    color: hsl(160 60% 50%);
+    color: var(--success);
     font-weight: 500;
 }
 
 .status-dot {
     width: 6px;
     height: 6px;
-    background: hsl(160 70% 50%);
+    background: var(--success);
     border-radius: 50%;
     animation: pulse-status 2s infinite;
 }
@@ -420,15 +412,15 @@
     align-items: center;
     gap: 1rem;
     padding: 1.25rem;
-    background: hsl(220 12% 11%);
-    border: 1px solid hsl(220 12% 18%);
+    background: var(--muted);
+    border: 1px solid var(--border);
     border-radius: 14px;
     transition: all 0.3s ease;
 }
 
 .landing-preview-stat:hover {
-    border-color: hsl(220 15% 40% / 0.3);
-    box-shadow: 0 0 30px hsl(220 15% 40% / 0.08);
+    border-color: hsl(from var(--primary) h s l / 0.3);
+    box-shadow: 0 0 30px hsl(from var(--primary) h s l / 0.1);
 }
 
 .stat-icon {
@@ -442,18 +434,18 @@
 }
 
 .stat-icon.logs {
-    background: linear-gradient(135deg, hsl(220 15% 40% / 0.2) 0%, hsl(220 15% 40% / 0.05) 100%);
-    color: hsl(220 20% 70%);
+    background: hsl(from var(--primary) h s l / 0.15);
+    color: var(--primary);
 }
 
 .stat-icon.uptime {
-    background: linear-gradient(135deg, hsl(160 60% 45% / 0.2) 0%, hsl(160 60% 45% / 0.05) 100%);
-    color: hsl(160 70% 55%);
+    background: hsl(from var(--success) h s l / 0.15);
+    color: var(--success);
 }
 
 .stat-icon.response {
-    background: linear-gradient(135deg, hsl(220 15% 50% / 0.2) 0%, hsl(220 15% 50% / 0.05) 100%);
-    color: hsl(220 20% 75%);
+    background: hsl(from var(--accent) h s l / 0.15);
+    color: var(--accent);
 }
 
 .stat-svg {
@@ -470,23 +462,23 @@
 .stat-value {
     font-size: 1.5rem;
     font-weight: 700;
-    color: hsl(220 10% 92%);
+    color: var(--foreground);
 }
 
 .stat-value.success {
-    color: hsl(160 70% 55%);
+    color: var(--success);
 }
 
 .stat-label {
     font-size: 0.7rem;
-    color: hsl(220 10% 45%);
+    color: var(--muted-foreground);
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
 
 .landing-preview-chart {
     padding: 1rem 1.5rem 1.5rem;
-    border-top: 1px solid hsl(220 12% 16%);
+    border-top: 1px solid var(--border);
 }
 
 .chart-bars {
@@ -498,14 +490,14 @@
 
 .chart-bar {
     flex: 1;
-    background: linear-gradient(180deg, hsl(220 15% 45% / 0.4) 0%, hsl(220 15% 45% / 0.15) 100%);
+    background: linear-gradient(180deg, hsl(from var(--primary) h s l / 0.3) 0%, hsl(from var(--primary) h s l / 0.1) 100%);
     border-radius: 4px 4px 0 0;
     transition: all 0.3s ease;
 }
 
 .chart-bar.active {
-    background: linear-gradient(180deg, hsl(220 20% 60%) 0%, hsl(220 15% 45% / 0.6) 100%);
-    box-shadow: 0 0 15px hsl(220 20% 60% / 0.3);
+    background: linear-gradient(180deg, var(--primary) 0%, hsl(from var(--accent) h s l / 0.7) 100%);
+    box-shadow: 0 0 15px hsl(from var(--primary) h s l / 0.4);
 }
 
 /* Features Section */
@@ -525,12 +517,12 @@
 .landing-section-badge {
     display: inline-block;
     padding: 0.4rem 1rem;
-    background: hsl(220 12% 15%);
-    border: 1px solid hsl(220 12% 25%);
+    background: var(--secondary);
+    border: 1px solid hsl(from var(--primary) h s l / 0.3);
     border-radius: 50px;
     font-size: 0.75rem;
     font-weight: 600;
-    color: hsl(220 15% 65%);
+    color: var(--primary);
     text-transform: uppercase;
     letter-spacing: 0.1em;
     margin-bottom: 1.25rem;
@@ -539,14 +531,14 @@
 .landing-features-title {
     font-size: 2.75rem;
     font-weight: 700;
-    color: hsl(220 10% 92%);
+    color: var(--foreground);
     margin-bottom: 1rem;
     letter-spacing: -0.02em;
 }
 
 .landing-features-subtitle {
     font-size: 1.1rem;
-    color: hsl(220 10% 50%);
+    color: var(--muted-foreground);
     max-width: 600px;
     margin: 0 auto;
     line-height: 1.6;
@@ -560,18 +552,18 @@
 
 .landing-feature-card {
     padding: 2.5rem;
-    background: linear-gradient(165deg, hsl(220 12% 12%) 0%, hsl(220 12% 10%) 100%);
-    border: 1px solid hsl(220 12% 18%);
+    background: var(--card);
+    border: 1px solid var(--border);
     border-radius: 20px;
     transition: all 0.4s ease;
 }
 
 .landing-feature-card:hover {
     transform: translateY(-8px);
-    border-color: hsl(220 15% 40% / 0.3);
+    border-color: hsl(from var(--primary) h s l / 0.3);
     box-shadow:
-        0 25px 50px hsl(220 15% 5% / 0.4),
-        0 0 60px hsl(220 15% 40% / 0.06);
+        0 25px 50px hsl(from var(--background) h s l / 0.6),
+        0 0 60px hsl(from var(--primary) h s l / 0.08);
 }
 
 .landing-feature-icon {
@@ -581,10 +573,10 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, hsl(220 15% 40% / 0.15) 0%, hsl(220 15% 40% / 0.05) 100%);
-    border: 1px solid hsl(220 15% 40% / 0.2);
+    background: linear-gradient(135deg, hsl(from var(--primary) h s l / 0.15) 0%, hsl(from var(--accent) h s l / 0.08) 100%);
+    border: 1px solid hsl(from var(--primary) h s l / 0.2);
     border-radius: 16px;
-    color: hsl(220 20% 70%);
+    color: var(--primary);
 }
 
 .landing-feature-icon svg {
@@ -595,20 +587,20 @@
 .landing-feature-card h3 {
     font-size: 1.35rem;
     font-weight: 700;
-    color: hsl(220 10% 92%);
+    color: var(--foreground);
     margin-bottom: 0.75rem;
 }
 
 .landing-feature-card p {
     font-size: 0.95rem;
-    color: hsl(220 10% 48%);
+    color: var(--muted-foreground);
     line-height: 1.7;
 }
 
 /* Footer */
 .landing-footer {
     padding: 3rem 5%;
-    border-top: 1px solid hsl(220 12% 16%);
+    border-top: 1px solid var(--border);
     position: relative;
     z-index: 5;
 }
@@ -625,7 +617,7 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    color: hsl(220 15% 65%);
+    color: var(--primary);
     font-weight: 600;
 }
 
@@ -635,7 +627,7 @@
 }
 
 .landing-footer p {
-    color: hsl(220 10% 40%);
+    color: var(--muted-foreground);
     font-size: 0.9rem;
 }
 

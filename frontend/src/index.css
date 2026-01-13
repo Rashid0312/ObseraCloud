@@ -5,44 +5,48 @@
 
 :root,
 .dark {
-  /* Deep Space Theme */
-  --background: #0b0c15;
-  /* Deep Navy/Black */
-  --foreground: #e2e8f0;
-  /* Slate 200 */
+  /* Kretsia Theme - Deep Purple with Warm Coral Accents */
 
-  /* Glassmorphism Cards */
-  --card: rgba(30, 41, 59, 0.4);
-  /* Slate 900 with opacity */
-  --card-foreground: #f1f5f9;
+  /* Background: Deep dark purple */
+  --background: hsl(270, 30%, 8%);
 
-  /* Accents */
-  --primary: #3b82f6;
-  /* Bright Blue */
-  --primary-foreground: #ffffff;
+  /* Foreground: Warm cream text */
+  --foreground: hsl(30, 20%, 90%);
 
-  --secondary: rgba(51, 65, 85, 0.5);
-  --secondary-foreground: #f8fafc;
+  /* Cards: Slightly lighter than background */
+  --card: hsl(270, 25%, 12%);
+  --card-foreground: hsl(30, 20%, 90%);
 
-  --muted: rgba(30, 41, 59, 0.5);
-  --muted-foreground: #94a3b8;
+  /* Primary: Pink-coral (solid fallback, gradient applied via CSS) */
+  --primary: hsl(340, 85%, 65%);
+  --primary-foreground: hsl(270, 30%, 8%);
 
-  --accent: #22c55e;
-  /* Neon Green for Success/Active */
-  --accent-foreground: #000000;
+  /* Secondary: Muted purple-gray */
+  --secondary: hsl(270, 15%, 25%);
+  --secondary-foreground: hsl(30, 20%, 85%);
 
-  --destructive: #ef4444;
-  --border: rgba(148, 163, 184, 0.1);
-  /* Subtle 1px border */
-  --input: rgba(15, 23, 42, 0.6);
-  --ring: #3b82f6;
+  /* Muted: Soft gray */
+  --muted: hsl(270, 20%, 18%);
+  --muted-foreground: hsl(270, 10%, 55%);
+
+  /* Accent: Warm coral-orange for CTAs */
+  --accent: hsl(25, 90%, 60%);
+  --accent-foreground: hsl(270, 30%, 8%);
+
+  --destructive: hsl(0, 72%, 55%);
+
+  /* Border: Dark purple */
+  --border: hsl(270, 20%, 15%);
+  --input: hsl(270, 25%, 14%);
+  --ring: hsl(340, 85%, 65%);
 
   --radius: 0.75rem;
 
-  --success: #10b981;
-  --warning: #f59e0b;
-  --error: #ef4444;
-  --info: #0ea5e9;
+  /* Status Colors */
+  --success: hsl(160, 70%, 45%);
+  --warning: hsl(45, 90%, 55%);
+  --error: hsl(0, 72%, 55%);
+  --info: hsl(200, 80%, 55%);
 
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -55,10 +59,24 @@
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--border);
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  border-radius: 30px;
+}
+
+/* Kretsia Gradient for CTAs and Accent Elements */
+.gradient-cta {
+  background: linear-gradient(135deg, hsl(340, 85%, 65%) 0%, hsl(25, 90%, 60%) 100%);
+  color: hsl(270, 30%, 8%);
+  border: none;
+  font-weight: 600;
+}
+
+.gradient-cta:hover {
+  background: linear-gradient(135deg, hsl(340, 85%, 70%) 0%, hsl(25, 90%, 65%) 100%);
+  box-shadow: 0 0 20px hsla(340, 85%, 65%, 0.4);
 }
 
 .text-glow {
-  text-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+  text-shadow: 0 0 10px hsla(340, 85%, 65%, 0.5);
 }
 
 /* Light theme */
