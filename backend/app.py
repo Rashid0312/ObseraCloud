@@ -1414,7 +1414,7 @@ def manage_monitors():
         # CREATE MONITOR
         elif request.method == 'POST':
             data = request.get_json()
-            service_name = sanitize_input(data.get('service_name'))
+            service_name = sanitize_input(data.get('service_name'), pattern=r'^[a-zA-Z0-9 _\-\.]+$')
             endpoint_url = data.get('endpoint_url')
             check_interval = int(data.get('check_interval', 60))
             
