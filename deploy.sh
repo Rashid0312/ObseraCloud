@@ -21,6 +21,11 @@ echo "📦 1. Staging and Committing local changes..."
 git add .
 git commit -m "$1" || echo "⚠️  Nothing to commit, proceeding..."
 git push origin main
+# Load API Key from local .env
+if [ -f .env ]; then
+    export $(grep -v '^#' .env | xargs)
+fi
+
 echo "✅ Local changes pushed to GitHub."
 
 # 2. Remote Operations via SSH
@@ -40,6 +45,10 @@ ssh root@46.62.229.59 << EOF
     echo "⬇️  Pulling latest code (Force Reset)..."
     git fetch origin
     git reset --hard origin/main
+    
+    # Create .env file with secrets
+    echo "🔑 Configuring secrets..."
+    echo "GEMINI_API_KEY=${GEMINI_API_KEY}" > .env
     
     echo "🧹 Cleaning up conflicting services..."
     docker stop rosetta-frontend rosetta-backend || true
