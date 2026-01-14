@@ -50,9 +50,9 @@ ssh root@46.62.229.59 << EOF
     echo "🔑 Configuring secrets..."
     cat > .env <<INNEREOF
 GEMINI_API_KEY=${GEMINI_API_KEY}
-POSTGRES_USER=obsera_user
+POSTGRES_USER=skyview_user
 POSTGRES_PASSWORD=skyview_password
-POSTGRES_DB=obsera
+POSTGRES_DB=skyview
 JWT_SECRET_KEY=${JWT_SECRET_KEY:-super-secret-jwt-key}
 INNEREOF
     
