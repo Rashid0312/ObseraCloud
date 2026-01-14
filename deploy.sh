@@ -48,7 +48,13 @@ ssh root@46.62.229.59 << EOF
     
     # Create .env file with secrets
     echo "🔑 Configuring secrets..."
-    echo "GEMINI_API_KEY=${GEMINI_API_KEY}" > .env
+    cat > .env <<INNEREOF
+GEMINI_API_KEY=${GEMINI_API_KEY}
+POSTGRES_USER=${POSTGRES_USER:-obsera_user}
+POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-skyview_password}
+POSTGRES_DB=${POSTGRES_DB:-obsera}
+JWT_SECRET_KEY=${JWT_SECRET_KEY:-super-secret-jwt-key}
+INNEREOF
     
     echo "🧹 Cleaning up conflicting services..."
     docker stop rosetta-frontend rosetta-backend || true
