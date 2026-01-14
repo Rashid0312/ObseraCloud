@@ -1443,7 +1443,7 @@ def manage_monitors():
     # ==================== STATUS PAGES ====================
     
 @app.route('/api/status-pages', methods=['GET', 'POST'])
-@require_api_key
+@require_jwt
 def manage_status_pages():
     """Manage public status pages"""
     conn = get_db_connection()
