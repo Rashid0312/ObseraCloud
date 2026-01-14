@@ -2,11 +2,12 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install dependencies
-RUN pip install --no-cache-dir requests psycopg2-binary
+# Install dependencies from requirements.txt to ensure consistency
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the health checker script
-COPY health_checker.py .
+# Copy all backend code (including health_checker.py, clickhouse_client.py, ai_agent.py)
+COPY . .
 
 # Run the health checker
 CMD ["python", "-u", "health_checker.py"]
