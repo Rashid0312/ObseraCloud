@@ -2150,7 +2150,8 @@ def manage_status_pages():
         if request.method == 'GET':
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
                 cur.execute("""
-                    SELECT id, slug, title, description, is_public, created_at,
+                cur.execute("""
+                    SELECT id, slug, title, description, is_public, requires_auth, created_at,
                            (SELECT COUNT(*) FROM status_page_monitors spm WHERE spm.status_page_id = sp.id) as monitor_count
                     FROM status_pages sp
                     WHERE tenant_id = %s
@@ -2170,6 +2171,13 @@ def manage_status_pages():
             slug = sanitize_input(data.get('slug'))
             description = data.get('description', '')
             monitor_ids = data.get('monitors', []) # List of monitor IDs
+            is_public = data.get('is_public', True)
+            requires_auth = data.get('requires_auth', False)
+            password = data.get('password')
+            password_hash = None
+            
+            if requires_auth and password:
+                password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
             
             if not title or not slug:
                 return jsonify({"error": "Title and slug are required"}), 400
@@ -2182,10 +2190,10 @@ def manage_status_pages():
                     
                 # Create Page
                 cur.execute("""
-                    INSERT INTO status_pages (tenant_id, slug, title, description)
-                    VALUES (%s, %s, %s, %s)
+                    INSERT INTO status_pages (tenant_id, slug, title, description, is_public, requires_auth, password_hash)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
                     RETURNING id, slug, title
-                """, (tenant_id, slug, title, description))
+                """, (tenant_id, slug, title, description, is_public, requires_auth, password_hash))
                 new_page = cur.fetchone()
                 page_id = new_page['id']
                 
@@ -2212,7 +2220,7 @@ def manage_status_pages():
 
 @app.route('/api/status-pages/public/<slug>', methods=['GET'])
 def public_status_page(slug):
-    """Public endpoint for status pages (No Auth Required)"""
+    """Public endpoint for status pages (Supports Auth for Private Pages)"""
     conn = get_db_connection()
     if not conn:
         return jsonify({"error": "Service unavailable"}), 503
@@ -2221,7 +2229,7 @@ def public_status_page(slug):
          with conn.cursor(cursor_factory=RealDictCursor) as cur:
             # 1. Get Page Info
             cur.execute("""
-                SELECT id, tenant_id, title, description, is_public 
+                SELECT id, tenant_id, title, description, is_public, requires_auth, password_hash
                 FROM status_pages 
                 WHERE slug = %s
             """, (slug,))
@@ -2230,9 +2238,41 @@ def public_status_page(slug):
             if not page:
                 return jsonify({"error": "Status page not found"}), 404
                 
+            # Access Control Logic
+            is_locked = False
             if not page['is_public']:
-                return jsonify({"error": "This page is private"}), 403
+                # Private page logic? For now, we only implement 'requires_auth' (password)
+                # If truly private (internal only), maybe block? 
+                # Let's assume 'requires_auth' is the main gate.
+                pass
+
+            if page['requires_auth']:
+                # Check for access token
+                auth_header = request.headers.get('Authorization')
+                authorized = False
+                if auth_header and auth_header.startswith('Bearer '):
+                    token = auth_header.split(' ')[1]
+                    try:
+                        # Verify simple page access token
+                        payload = jwt.decode(token, JWT_SECRET, algorithms=['HS256'])
+                        if payload.get('sub') == f"status_page:{page['id']}":
+                            authorized = True
+                    except:
+                        pass # Invalid token
                 
+                if not authorized:
+                    is_locked = True
+            
+            if is_locked:
+                return jsonify({
+                    "page": {
+                        "title": page['title'],
+                        "description": page['description'], # Show description so they know what it is?
+                        "requires_auth": True
+                    },
+                    "locked": True
+                }), 200
+
             # 2. Get Monitors
             cur.execute("""
                 SELECT e.service_name, e.endpoint_url, 
@@ -2248,23 +2288,127 @@ def public_status_page(slug):
             monitors = cur.fetchall()
             
             # Cleanup data for public view
+            safe_monitors = []
             for m in monitors:
-                if not m['current_status']: m['current_status'] = 'pending'
-                if not m['uptime_24h']: m['uptime_24h'] = '100.00'
-
+                safe_monitors.append({
+                    "service_name": m['service_name'],
+                    "current_status": m['current_status'] or 'unknown',
+                    "uptime_24h": str(m['uptime_24h'] or 100.0),
+                    # Don't expose endpoint_url
+                })
+                
             return jsonify({
                 "page": {
-                    "title": page['title'],
+                    "title": page['title'], 
                     "description": page['description']
                 },
-                "monitors": [dict(m) for m in monitors]
+                "monitors": safe_monitors
             }), 200
             
     except Exception as e:
         logger.error(f"Public status page error: {e}")
-        return jsonify({"error": "Internal server error"}), 500
+        return jsonify({"error": "Failed to load page"}), 500
     finally:
         conn.close()
+
+@app.route('/api/status-pages/public/<slug>/verify', methods=['POST'])
+@limiter.limit("10 per minute")
+def verify_status_page_password(slug):
+    """Verify password for protected status page"""
+    data = request.get_json()
+    password = data.get('password')
+    
+    conn = get_db_connection()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("SELECT id, password_hash FROM status_pages WHERE slug = %s", (slug,))
+            page = cur.fetchone()
+            
+            if not page or not page['password_hash']:
+                return jsonify({"error": "Invalid request"}), 400
+                
+            if bcrypt.checkpw(password.encode('utf-8'), page['password_hash'].encode('utf-8')):
+                # Generate limited access token
+                token = jwt.encode({
+                    'sub': f"status_page:{page['id']}",
+                    'exp': datetime.now(timezone.utc) + timedelta(hours=1)
+                }, JWT_SECRET, algorithm='HS256')
+                
+                return jsonify({"token": token}), 200
+            else:
+                return jsonify({"error": "Incorrect password"}), 401
+    except Exception as e:
+        logger.error(f"Password verification failed: {e}")
+        return jsonify({"error": "Verification failed"}), 500
+    finally:
+        conn.close()
+@app.route('/api/status-pages/public/<slug>/impact', methods=['GET'])
+def public_status_page_impact(slug):
+    """Get impact metrics (Success/Error counts) for a status page"""
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({"error": "Service unavailable"}), 503
+        
+    try:
+         with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            # 1. Get Page Info & Auth Check
+            cur.execute("""
+                SELECT id, tenant_id, requires_auth, is_public
+                FROM status_pages 
+                WHERE slug = %s
+            """, (slug,))
+            page = cur.fetchone()
+            
+            if not page:
+                return jsonify({"error": "Status page not found"}), 404
+                
+            if not page['is_public']:
+                 return jsonify({"error": "Private page"}), 403
+
+            if page['requires_auth']:
+                # Verify Token (Quick check)
+                auth_header = request.headers.get('Authorization')
+                authorized = False
+                if auth_header and auth_header.startswith('Bearer '):
+                    token = auth_header.split(' ')[1]
+                    try:
+                        payload = jwt.decode(token, JWT_SECRET, algorithms=['HS256'])
+                        if payload.get('sub') == f"status_page:{page['id']}":
+                            authorized = True
+                    except:
+                        pass
+                if not authorized:
+                    return jsonify({"error": "Authentication required"}), 401
+            
+            # 2. Get Services
+            cur.execute("""
+                SELECT e.service_name
+                FROM service_endpoints e
+                JOIN status_page_monitors spm ON spm.endpoint_id = e.id
+                WHERE spm.status_page_id = %s
+            """, (page['id'],))
+            rows = cur.fetchall()
+            services = [r['service_name'] for r in rows]
+            
+            if not services:
+                return jsonify({"data": []}), 200
+                
+            # 3. Query ClickHouse
+            metrics = ch.get_impact_metrics(page['tenant_id'], services)
+            
+            # Format dates
+            for m in metrics:
+                if isinstance(m['bucket'], datetime):
+                    m['bucket'] = m['bucket'].isoformat()
+            
+            return jsonify({"data": metrics}), 200
+            
+    except Exception as e:
+        logger.error(f"Impact graph error: {e}")
+        return jsonify({"error": "Failed to load metrics"}), 500
+    finally:
+        conn.close()
+
 # ==================== MAIN ====================
 
 if __name__ == '__main__':

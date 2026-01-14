@@ -124,3 +124,33 @@ def analyze_outage(monitor_error, trace_data):
     except Exception as e:
         logger.error(f"AI Outage Analysis Failed: {e}")
         return "AI Analysis Failed."
+
+def draft_incident_report(service_name, duration_str, root_cause):
+    """
+    Draft a public-facing incident report based on the technical root cause.
+    """
+    if not api_key:
+        return "Service experienced an interruption. Our team has resolved the issue."
+        
+    try:
+        prompt = f"""
+        You are a Site Reliability Engineer drafting a public status page update.
+        
+        Context:
+        - Service: {service_name}
+        - Duration: {duration_str}
+        - Technical Root Cause: {root_cause}
+        
+        Task: Write a concise, professional, and reassuring "Incident Resolved" message for our customers.
+        - Explain what happened simply (no deep jargon).
+        - State that it is fixed.
+        - Max 3 sentences.
+        - Do not include greetings or sign-offs.
+        """
+        
+        response = model.generate_content(prompt)
+        return response.text.replace('**', '').strip()
+        
+    except Exception as e:
+        logger.error(f"Failed to draft report: {e}")
+        return f"Service {service_name} was down for {duration_str}. The issue has been resolved."

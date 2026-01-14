@@ -1,30 +1,51 @@
 .public-status-page {
-    max-width: 800px;
+    max-width: 900px;
     margin: 0 auto;
-    padding: 2rem;
+    padding: 3rem 2rem;
     min-height: 100vh;
-    color: var(--text-primary);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    background: var(--background);
+    /* Ensure consistent bg */
+}
+
+/* Background gradient effect for public page */
+.public-status-page::before {
+    content: '';
+    position: fixed;
+    top: -200px;
+    right: -200px;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(59, 130, 246, 0.1), transparent 70%);
+    z-index: -1;
+    filter: blur(80px);
+    pointer-events: none;
 }
 
 .status-header {
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
-    padding: 2rem;
-    margin-bottom: 2rem;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 2.5rem;
+    margin-bottom: 2.5rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    box-shadow: 0 4px 20px -5px rgba(0, 0, 0, 0.3);
 }
 
 .header-content h1 {
-    font-size: 2rem;
+    font-size: 2.25rem;
     margin: 0 0 0.5rem 0;
+    font-weight: 700;
+    letter-spacing: -0.02em;
 }
 
 .header-content p {
-    color: var(--text-muted);
+    color: var(--muted-foreground);
     margin: 0;
+    font-size: 1.1rem;
 }
 
 .overall-status {
@@ -33,34 +54,38 @@
     gap: 0.75rem;
     padding: 0.75rem 1.5rem;
     border-radius: 50px;
-    font-weight: 500;
+    font-weight: 600;
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
 }
 
 .overall-status.up {
-    background: var(--success);
-    color: white;
-    box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--success);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.1);
 }
 
 .overall-status.issue {
-    background: var(--warning);
-    color: black;
-    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--warning);
+    border: 1px solid rgba(245, 158, 11, 0.2);
 }
 
 .public-monitor-card {
-    margin-bottom: 1rem;
-    padding: 1.5rem;
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.02);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    margin-bottom: 1.25rem;
+    padding: 1.75rem;
+    border-radius: 12px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    transition: transform 0.2s ease;
 }
 
 .monitor-info {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 1rem;
+    margin-bottom: 1.25rem;
 }
 
 .monitor-identity {
@@ -71,59 +96,169 @@
 
 .monitor-identity h3 {
     margin: 0;
-    font-weight: 500;
+    font-weight: 600;
+    font-size: 1.1rem;
 }
 
 .monitor-uptime {
     text-align: right;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 4px 12px;
+    border-radius: 6px;
 }
 
 .monitor-uptime .label {
-    font-size: 0.75rem;
-    color: var(--text-muted);
+    font-size: 0.7rem;
+    color: var(--muted-foreground);
     display: block;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 2px;
 }
 
 .monitor-uptime .value {
-    font-weight: 600;
-    font-family: monospace;
+    font-weight: 700;
+    font-family: var(--font-mono);
+    color: var(--foreground);
+    font-size: 0.95rem;
 }
 
 .status-footer {
     text-align: center;
     margin-top: 4rem;
     padding-top: 2rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.05);
-    color: var(--text-muted);
+    border-top: 1px solid var(--border);
+    color: var(--muted-foreground);
+    font-size: 0.9rem;
 }
 
-/* Reusing history bar styles from UptimeMonitors.css via global or duplicate */
-/* Ideally we import or duplicate necessary styles since this runs standalone */
 .history-bar-container {
     padding-top: 0.5rem;
 }
 
 .history-bar {
     display: flex;
-    gap: 3px;
-    height: 32px;
-    /* Taller for public view */
+    gap: 4px;
+    height: 36px;
 }
 
 .history-block {
     flex: 1;
-    border-radius: 2px;
-    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.03);
+    transition: all 0.2s;
+}
+
+.history-block:hover {
+    transform: scaleY(1.1);
 }
 
 .history-block.up {
     background: var(--success);
+    box-shadow: 0 0 5px rgba(16, 185, 129, 0.3);
 }
 
 .history-block.down {
     background: var(--error);
+    box-shadow: 0 0 5px rgba(239, 68, 68, 0.3);
 }
 
 .history-block.degraded {
     background: var(--warning);
+}
+
+/* Locked State */
+.public-status-page.locked {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 80vh;
+}
+
+.lock-screen {
+    width: 100%;
+    max-width: 420px;
+    padding: 3.5rem;
+    text-align: center;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    backdrop-filter: blur(20px);
+    box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
+}
+
+.lock-icon {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.02));
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 2rem;
+    color: var(--foreground);
+}
+
+.lock-form {
+    margin-top: 2.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.lock-form input {
+    width: 100%;
+    padding: 1rem;
+    border-radius: 10px;
+    background: var(--input);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: white;
+    font-size: 1rem;
+    transition: all 0.2s;
+}
+
+.lock-form input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+    background: rgba(0, 0, 0, 0.4);
+}
+
+.lock-form button {
+    width: 100%;
+    padding: 1rem;
+    border-radius: 10px;
+    border: none;
+    background: var(--foreground);
+    color: var(--background);
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    transition: all 0.2s;
+    font-family: var(--font-sans);
+}
+
+.lock-form button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(255, 255, 255, 0.1);
+}
+
+.lock-form button:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Impact Graph */
+.impact-graph {
+    margin-top: 3rem;
+    padding: 2rem;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.2);
 }

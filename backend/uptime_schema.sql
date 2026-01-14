@@ -116,6 +116,8 @@ CREATE TABLE IF NOT EXISTS status_pages (
     title VARCHAR(200) NOT NULL,
     description TEXT,
     is_public BOOLEAN DEFAULT TRUE,
+    password_hash VARCHAR(255),
+    requires_auth BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW(),
     UNIQUE(tenant_id, slug),

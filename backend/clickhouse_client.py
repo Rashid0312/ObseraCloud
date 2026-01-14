@@ -286,3 +286,36 @@ def get_recent_error_traces(tenant_id, minutes=5, limit=50):
     
     return execute_query(query, params)
 
+
+def get_impact_metrics(tenant_id, services, hours=24):
+    """
+    Get success vs error counts bucketed by hour for specific services.
+    Used for Status Page Impact Graphs.
+    """
+    if not services:
+        return []
+
+    params = {
+        'tenant_id': tenant_id,
+        'services': services,
+        'hours': hours
+    }
+    
+    # We look for http_requests_total in otel_metrics_sum
+    # Generator sends Value=1 for each request.
+    query = """
+        SELECT
+            toStartOfHour(TimeUnix) as bucket,
+            sumIf(Value, Attributes['status'] LIKE '5%' OR Attributes['status'] LIKE '4%') as error_count,
+            sumIf(Value, Attributes['status'] LIKE '2%') as success_count
+        FROM otel_metrics_sum
+        WHERE (ResourceAttributes['tenant_id'] = %(tenant_id)s OR Attributes['tenant_id'] = %(tenant_id)s)
+          AND MetricName = 'http_requests_total'
+          AND (Attributes['service_name'] IN %(services)s OR ResourceAttributes['service.name'] IN %(services)s)
+          AND TimeUnix > now() - INTERVAL %(hours)s HOUR
+        GROUP BY bucket
+        ORDER BY bucket ASC
+    """
+    
+    return execute_query(query, params)
+
