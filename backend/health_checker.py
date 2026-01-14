@@ -106,9 +106,8 @@ def check_endpoint(endpoint):
         # Determine status
         if response.status_code == expected_code:
             status = 'up'
-        elif response.status_code < 500:
-            status = 'degraded'
         else:
+            # Treat any unexpected status (4xx, 5xx) as DOWN to trigger outage analysis
             status = 'down'
         
         return {
