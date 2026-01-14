@@ -14,6 +14,8 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import clickhouse_client
+import ai_agent
 
 # Configure logging
 logging.basicConfig(
@@ -210,18 +212,33 @@ def check_for_outage(conn, result):
                     recent = cur.fetchone()
                     
                     if recent and recent['fail_count'] >= OUTAGE_THRESHOLD:
-                        # Create new outage
+                        # TRIGGER AI INVESTIGATION
+                        ai_insight = None
+                        try:
+                            # 1. Get recent error traces
+                            traces = clickhouse_client.get_recent_error_traces(result['tenant_id'], minutes=5)
+                            # 2. Analyze with AI
+                            if traces:
+                                ai_insight = ai_agent.analyze_outage(
+                                    monitor_error=f"Status: {result['status']}, Code: {result['status_code']}, Error: {result['error_message']}", 
+                                    trace_data=traces
+                                )
+                        except Exception as e:
+                            logger.error(f"AI Investigation failed: {e}")
+
+                        # Create new outage with AI insight
                         cur.execute("""
                             INSERT INTO outages 
-                                (endpoint_id, tenant_id, service_name, started_at, failure_count)
-                            VALUES (%s, %s, %s, NOW(), %s)
+                                (endpoint_id, tenant_id, service_name, started_at, failure_count, ai_analysis)
+                            VALUES (%s, %s, %s, NOW(), %s, %s)
                         """, (
                             result['endpoint_id'],
                             result['tenant_id'],
                             result['service_name'],
-                            recent['fail_count']
+                            recent['fail_count'],
+                            ai_insight
                         ))
-                        logger.warning(f"OUTAGE DETECTED: {result['tenant_id']}/{result['service_name']}")
+                        logger.warning(f"OUTAGE DETECTED: {result['tenant_id']}/{result['service_name']} | AI Insight: {ai_insight}")
                 
             elif result['status'] == 'up' and ongoing_outage:
                 # Resolve outage

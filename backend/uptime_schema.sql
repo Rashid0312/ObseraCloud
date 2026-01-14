@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS outages (
     failure_count INTEGER DEFAULT 1,
     status VARCHAR(20) DEFAULT 'ongoing' CHECK (status IN ('ongoing', 'resolved')),
     root_cause TEXT,
+    ai_analysis TEXT, -- AI-generated root cause analysis
     created_at TIMESTAMP DEFAULT NOW()
 );
 

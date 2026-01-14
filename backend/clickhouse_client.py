@@ -244,3 +244,44 @@ def get_all_metrics(tenant_id, start_time, end_time):
     """
     return execute_query(query, params)
 
+
+def get_recent_error_traces(tenant_id, minutes=5, limit=50):
+    """
+    Fetch failing traces from the last N minutes to help diagnose outages.
+    Returns structured data for AI analysis.
+    """
+    conn = get_client()
+    if not conn:
+        return []
+
+    # Calculate time window
+    start_time = int((datetime.now().timestamp() - (minutes * 60)) * 1e9)
+    
+    params = {
+        'tenant_id': tenant_id,
+        'start_time': start_time,
+        'limit': limit
+    }
+    
+    # Select spans that are Errors or have high duration
+    query = """
+        SELECT
+            TraceId,
+            SpanId,
+            SpanName,
+            ServiceName,
+            StatusMessage,
+            StatusCode,
+            Duration as DurationNano,
+            Attributes as SpanAttributes,
+            toUnixTimestamp(Timestamp) as TimestampUnix
+        FROM otel_traces
+        WHERE ResourceAttributes['tenant_id'] = %(tenant_id)s
+          AND toUnixTimestamp64Nano(Timestamp) >= %(start_time)s
+          AND (StatusCode = 'STATUS_CODE_ERROR' OR Duration > 1000000000) -- Error or >1s
+        ORDER BY Timestamp DESC
+        LIMIT %(limit)s
+    """
+    
+    return execute_query(query, params)
+

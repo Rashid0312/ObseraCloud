@@ -70,3 +70,54 @@ def diagnose_trace(trace_id, tenant_id):
     except Exception as e:
         logger.error(f"Gemini API Error: {e}")
         return {"error": "AI Analysis Failed. Please verify your API Key."}
+
+
+def analyze_outage(monitor_error, trace_data):
+    """
+    Analyzes an uptime outage by correlating it with recent traces.
+    """
+    if not api_key:
+        return "AI Configuration Missing."
+        
+    if not trace_data:
+        return "No recent traces found to correlate with this outage."
+
+    # Summarize traces for context
+    trace_summary = []
+    for t in trace_data[:20]: # Limit to 20 traces
+        trace_summary.append(
+            f"- Span: {t.get('SpanName')} | Service: {t.get('ServiceName')} | "
+            f"Status: {t.get('StatusCode')} | Error: {t.get('StatusMessage')} | "
+            f"Duration: {int(t.get('DurationNano', 0)/1e6)}ms"
+        )
+    
+    trace_context = "\n".join(trace_summary)
+    
+    prompt = f"""
+    You are an intelligent SRE Assistant for SkyView.
+    
+    Context:
+    A service monitor just detected an outage.
+    Monitor Error: "{monitor_error}"
+    
+    Recent Trace Activity (Last 5 mins):
+    {trace_context}
+    
+    Task:
+    Analyze the recent traces to find the ROOT CAUSE of the monitor failure.
+    - Did a dependency fail (Database, 3rd party API)?
+    - Was there a latency spike?
+    - Is it a code error (500s)?
+    
+    Output Format:
+    Concise, 1-2 sentences explaining WHY the service is down based on the evidence.
+    Example: "The service is down due to repeated 503 errors from the 'payment-gateway' dependency."
+    If no correlation found, say "No obvious correlation found in recent traces."
+    """
+    
+    try:
+        response = model.generate_content(prompt)
+        return response.text.strip()
+    except Exception as e:
+        logger.error(f"AI Outage Analysis Failed: {e}")
+        return "AI Analysis Failed."

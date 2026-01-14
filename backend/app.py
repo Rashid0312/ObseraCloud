@@ -1394,7 +1394,8 @@ def manage_monitors():
                            e.is_active, e.created_at,
                            (SELECT status FROM health_checks h WHERE h.endpoint_id = e.id ORDER BY checked_at DESC LIMIT 1) as current_status,
                            (SELECT response_time_ms FROM health_checks h WHERE h.endpoint_id = e.id ORDER BY checked_at DESC LIMIT 1) as response_time_ms,
-                           (SELECT uptime_percentage FROM uptime_summary u WHERE u.endpoint_id = e.id AND u.period_type = 'hourly' ORDER BY period_start DESC LIMIT 1) as uptime_24h
+                           (SELECT uptime_percentage FROM uptime_summary u WHERE u.endpoint_id = e.id AND u.period_type = 'hourly' ORDER BY period_start DESC LIMIT 1) as uptime_24h,
+                           (SELECT ai_analysis FROM outages o WHERE o.endpoint_id = e.id AND o.status = 'ongoing' ORDER BY started_at DESC LIMIT 1) as ai_analysis
                     FROM service_endpoints e
                     WHERE e.tenant_id = %s
                     ORDER BY e.created_at DESC

@@ -408,3 +408,64 @@ form {
 .submit-btn:hover:not(:disabled) {
     background: var(--primary-dark);
 }
+
+/* AI Insight Box */
+.ai-insight-box {
+    margin-top: 1rem;
+    background: linear-gradient(145deg, rgba(147, 51, 234, 0.1), rgba(79, 70, 229, 0.05));
+    border: 1px solid rgba(147, 51, 234, 0.3);
+    border-radius: 8px;
+    padding: 1rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.ai-insight-box::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 2px;
+    height: 100%;
+    background: #9333ea;
+}
+
+.ai-insight-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 0.5rem;
+    color: #a855f7;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.ai-icon {
+    color: #a855f7;
+    animation: pulse 2s infinite;
+}
+
+.ai-insight-text {
+    margin: 0;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    color: var(--foreground);
+    opacity: 0.9;
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 0.6;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 1;
+        transform: scale(1.1);
+    }
+
+    100% {
+        opacity: 0.6;
+        transform: scale(1);
+    }
+}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
     Server, Plus, Trash2, CheckCircle, AlertTriangle,
-    XCircle, Clock, Globe, RefreshCw, Activity
+    XCircle, Clock, Globe, RefreshCw, Activity, Bot
 } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 import './UptimeMonitors.css';
@@ -16,6 +16,7 @@ interface Monitor {
     response_time_ms: number | null;
     uptime_24h: string | null;
     created_at: string;
+    ai_analysis?: string;
 }
 
 interface UptimeMonitorsProps {
@@ -200,6 +201,16 @@ const UptimeMonitors: React.FC<UptimeMonitorsProps> = ({ tenantId, refreshKey })
                                     <span className="stat-value">{monitor.check_interval_seconds}s</span>
                                 </div>
                             </div>
+
+                            {monitor.ai_analysis && (
+                                <div className="ai-insight-box">
+                                    <div className="ai-insight-header">
+                                        <Bot size={14} className="ai-icon" />
+                                        <span>AI Root Cause Analysis</span>
+                                    </div>
+                                    <p className="ai-insight-text">{monitor.ai_analysis}</p>
+                                </div>
+                            )}
 
                             <div className="monitor-timeline">
                                 {/* Visual timeline placeholder - creates a moving pulse effect */}
