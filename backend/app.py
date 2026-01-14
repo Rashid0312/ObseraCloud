@@ -1440,135 +1440,14 @@ def manage_monitors():
                     "monitor": dict(new_monitor)
                 }), 201
 
-    # ==================== STATUS PAGES ====================
-    
-@app.route('/api/status-pages', methods=['GET', 'POST'])
-@require_jwt
-def manage_status_pages():
-    """Manage public status pages"""
-    conn = get_db_connection()
-    if not conn:
-        return jsonify({"error": "Database connection failed"}), 500
-        
-    try:
-        tenant_id = g.tenant_id
-        
-        if request.method == 'GET':
-            with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                cur.execute("""
-                    SELECT id, slug, title, description, is_public, created_at,
-                           (SELECT COUNT(*) FROM status_page_monitors spm WHERE spm.status_page_id = sp.id) as monitor_count
-                    FROM status_pages sp
-                    WHERE tenant_id = %s
-                    ORDER BY created_at DESC
-                """, (tenant_id,))
-                pages = cur.fetchall()
-                
-                for p in pages:
-                    if p['created_at']:
-                        p['created_at'] = p['created_at'].isoformat()
-                        
-                return jsonify({"pages": [dict(p) for p in pages]}), 200
-                
-        elif request.method == 'POST':
-            data = request.get_json()
-            title = sanitize_input(data.get('title'), pattern=r'^[a-zA-Z0-9 _\-\.]+$')
-            slug = sanitize_input(data.get('slug'))
-            description = data.get('description', '')
-            monitor_ids = data.get('monitors', []) # List of monitor IDs
-            
-            if not title or not slug:
-                return jsonify({"error": "Title and slug are required"}), 400
-                
-            with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                # check slug uniqueness
-                cur.execute("SELECT id FROM status_pages WHERE slug = %s", (slug,))
-                if cur.fetchone():
-                    return jsonify({"error": "Slug is already taken"}), 409
-                    
-                # Create Page
-                cur.execute("""
-                    INSERT INTO status_pages (tenant_id, slug, title, description)
-                    VALUES (%s, %s, %s, %s)
-                    RETURNING id, slug, title
-                """, (tenant_id, slug, title, description))
-                new_page = cur.fetchone()
-                page_id = new_page['id']
-                
-                # Link Monitors
-                if monitor_ids:
-                    values = []
-                    for m_id in monitor_ids:
-                         cur.execute("SELECT id FROM service_endpoints WHERE id = %s AND tenant_id = %s", (m_id, tenant_id))
-                         if cur.fetchone(): 
-                            values.append((page_id, m_id))
-                            
-                    for pid, mid in values:
-                         cur.execute("INSERT INTO status_page_monitors (status_page_id, endpoint_id) VALUES (%s, %s)", (pid, mid))
-                
-                conn.commit()
-                return jsonify({"message": "Status page created", "page": dict(new_page)}), 201
-                
+
     except Exception as e:
-        logger.error(f"Status page error: {e}")
+        logger.error(f"Monitor management failed: {e}")
         conn.rollback()
+        # Check for duplicate
+        if "unique constraint" in str(e).lower():
+            return jsonify({"error": "A monitor with this service name already exists"}), 409
         return jsonify({"error": str(e)}), 500
-    finally:
-        conn.close()
-
-@app.route('/api/status-pages/public/<slug>', methods=['GET'])
-def public_status_page(slug):
-    """Public endpoint for status pages (No Auth Required)"""
-    conn = get_db_connection()
-    if not conn:
-        return jsonify({"error": "Service unavailable"}), 503
-        
-    try:
-         with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            # 1. Get Page Info
-            cur.execute("""
-                SELECT id, tenant_id, title, description, is_public 
-                FROM status_pages 
-                WHERE slug = %s
-            """, (slug,))
-            page = cur.fetchone()
-            
-            if not page:
-                return jsonify({"error": "Status page not found"}), 404
-                
-            if not page['is_public']:
-                return jsonify({"error": "This page is private"}), 403
-                
-            # 2. Get Monitors
-            cur.execute("""
-                SELECT e.service_name, e.endpoint_url, 
-                       (SELECT status FROM health_checks h WHERE h.endpoint_id = e.id ORDER BY checked_at DESC LIMIT 1) as current_status,
-                       (SELECT response_time_ms FROM health_checks h WHERE h.endpoint_id = e.id ORDER BY checked_at DESC LIMIT 1) as response_time_ms,
-                       (SELECT uptime_percentage FROM uptime_summary u WHERE u.endpoint_id = e.id AND u.period_type = 'hourly' ORDER BY period_start DESC LIMIT 1) as uptime_24h
-                FROM service_endpoints e
-                JOIN status_page_monitors spm ON spm.endpoint_id = e.id
-                WHERE spm.status_page_id = %s
-                ORDER BY spm.display_order ASC, e.service_name ASC
-            """, (page['id'],))
-            
-            monitors = cur.fetchall()
-            
-            # Cleanup data for public view
-            for m in monitors:
-                if not m['current_status']: m['current_status'] = 'pending'
-                if not m['uptime_24h']: m['uptime_24h'] = '100.00'
-
-            return jsonify({
-                "page": {
-                    "title": page['title'],
-                    "description": page['description']
-                },
-                "monitors": [dict(m) for m in monitors]
-            }), 200
-            
-    except Exception as e:
-        logger.error(f"Public status page error: {e}")
-        return jsonify({"error": "Internal server error"}), 500
     finally:
         conn.close()
 
@@ -2267,3 +2146,135 @@ if __name__ == '__main__':
     logger.info("=" * 60)
     
     app.run(host='0.0.0.0', port=5001, debug=True)
+
+# ==================== STATUS PAGES ====================
+
+@app.route('/api/status-pages', methods=['GET', 'POST'])
+@require_jwt
+def manage_status_pages():
+    """Manage public status pages"""
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({"error": "Database connection failed"}), 500
+        
+    try:
+        tenant_id = g.tenant_id
+        
+        if request.method == 'GET':
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT id, slug, title, description, is_public, created_at,
+                           (SELECT COUNT(*) FROM status_page_monitors spm WHERE spm.status_page_id = sp.id) as monitor_count
+                    FROM status_pages sp
+                    WHERE tenant_id = %s
+                    ORDER BY created_at DESC
+                """, (tenant_id,))
+                pages = cur.fetchall()
+                
+                for p in pages:
+                    if p['created_at']:
+                        p['created_at'] = p['created_at'].isoformat()
+                        
+                return jsonify({"pages": [dict(p) for p in pages]}), 200
+                
+        elif request.method == 'POST':
+            data = request.get_json()
+            title = sanitize_input(data.get('title'), pattern=r'^[a-zA-Z0-9 _\-\.]+$')
+            slug = sanitize_input(data.get('slug'))
+            description = data.get('description', '')
+            monitor_ids = data.get('monitors', []) # List of monitor IDs
+            
+            if not title or not slug:
+                return jsonify({"error": "Title and slug are required"}), 400
+                
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                # check slug uniqueness
+                cur.execute("SELECT id FROM status_pages WHERE slug = %s", (slug,))
+                if cur.fetchone():
+                    return jsonify({"error": "Slug is already taken"}), 409
+                    
+                # Create Page
+                cur.execute("""
+                    INSERT INTO status_pages (tenant_id, slug, title, description)
+                    VALUES (%s, %s, %s, %s)
+                    RETURNING id, slug, title
+                """, (tenant_id, slug, title, description))
+                new_page = cur.fetchone()
+                page_id = new_page['id']
+                
+                # Link Monitors
+                if monitor_ids:
+                    values = []
+                    for m_id in monitor_ids:
+                         cur.execute("SELECT id FROM service_endpoints WHERE id = %s AND tenant_id = %s", (m_id, tenant_id))
+                         if cur.fetchone(): 
+                            values.append((page_id, m_id))
+                            
+                    for pid, mid in values:
+                         cur.execute("INSERT INTO status_page_monitors (status_page_id, endpoint_id) VALUES (%s, %s)", (pid, mid))
+                
+                conn.commit()
+                return jsonify({"message": "Status page created", "page": dict(new_page)}), 201
+                
+    except Exception as e:
+        logger.error(f"Status page error: {e}")
+        conn.rollback()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        conn.close()
+
+@app.route('/api/status-pages/public/<slug>', methods=['GET'])
+def public_status_page(slug):
+    """Public endpoint for status pages (No Auth Required)"""
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({"error": "Service unavailable"}), 503
+        
+    try:
+         with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            # 1. Get Page Info
+            cur.execute("""
+                SELECT id, tenant_id, title, description, is_public 
+                FROM status_pages 
+                WHERE slug = %s
+            """, (slug,))
+            page = cur.fetchone()
+            
+            if not page:
+                return jsonify({"error": "Status page not found"}), 404
+                
+            if not page['is_public']:
+                return jsonify({"error": "This page is private"}), 403
+                
+            # 2. Get Monitors
+            cur.execute("""
+                SELECT e.service_name, e.endpoint_url, 
+                       (SELECT status FROM health_checks h WHERE h.endpoint_id = e.id ORDER BY checked_at DESC LIMIT 1) as current_status,
+                       (SELECT response_time_ms FROM health_checks h WHERE h.endpoint_id = e.id ORDER BY checked_at DESC LIMIT 1) as response_time_ms,
+                       (SELECT uptime_percentage FROM uptime_summary u WHERE u.endpoint_id = e.id AND u.period_type = 'hourly' ORDER BY period_start DESC LIMIT 1) as uptime_24h
+                FROM service_endpoints e
+                JOIN status_page_monitors spm ON spm.endpoint_id = e.id
+                WHERE spm.status_page_id = %s
+                ORDER BY spm.display_order ASC, e.service_name ASC
+            """, (page['id'],))
+            
+            monitors = cur.fetchall()
+            
+            # Cleanup data for public view
+            for m in monitors:
+                if not m['current_status']: m['current_status'] = 'pending'
+                if not m['uptime_24h']: m['uptime_24h'] = '100.00'
+
+            return jsonify({
+                "page": {
+                    "title": page['title'],
+                    "description": page['description']
+                },
+                "monitors": [dict(m) for m in monitors]
+            }), 200
+            
+    except Exception as e:
+        logger.error(f"Public status page error: {e}")
+        return jsonify({"error": "Internal server error"}), 500
+    finally:
+        conn.close()
