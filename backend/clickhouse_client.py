@@ -272,8 +272,9 @@ def get_recent_error_traces(tenant_id, minutes=5, limit=50):
             ServiceName,
             StatusMessage,
             StatusCode,
+            StatusCode,
             Duration as DurationNano,
-            Attributes as SpanAttributes,
+            SpanAttributes,
             toUnixTimestamp(Timestamp) as TimestampUnix
         FROM otel_traces
         WHERE ResourceAttributes['tenant_id'] = %(tenant_id)s
