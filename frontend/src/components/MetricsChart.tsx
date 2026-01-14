@@ -1,12 +1,12 @@
 import React, { useEffect, useState, type ChangeEvent } from 'react';
 import {
-  AreaChart, Area, BarChart, Bar, ComposedChart,
+  AreaChart, Area, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
 import {
   Activity, AlertCircle, Clock, TrendingUp, Zap,
   Server, ArrowUp, ArrowDown, Minus, Download,
-  RefreshCw, CheckCircle, XCircle, ChevronDown, AlertTriangle
+  RefreshCw, CheckCircle, ChevronDown, AlertTriangle
 } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 import './MetricsChart.css';
@@ -324,7 +324,7 @@ const MetricsChart: React.FC<MetricsChartProps> = ({ tenantId, refreshKey }) => 
 
   // Use real uptime from API, fallback to synthetic if not available
   const uptimeValue = uptimeData?.uptime_percentage ?? parseFloat((100 - (errorRate * 0.1)).toFixed(2));
-  const hasRealUptime = uptimeData !== null;
+  // const hasRealUptime = uptimeData !== null; // Unused 
 
   // Get statuses
   const responseStatus = getResponseStatus(avgResponseMs);
@@ -631,7 +631,7 @@ const MetricsChart: React.FC<MetricsChartProps> = ({ tenantId, refreshKey }) => 
                     color: 'var(--foreground)'
                   }}
                   itemStyle={{ color: 'var(--foreground)' }}
-                  formatter={(value: number) => [`${value} requests`, 'Requests']}
+                  formatter={(value: any) => [`${value} requests`, 'Requests']}
                 />
                 <Area
                   type="monotone"
@@ -680,7 +680,7 @@ const MetricsChart: React.FC<MetricsChartProps> = ({ tenantId, refreshKey }) => 
                     color: 'var(--foreground)'
                   }}
                   itemStyle={{ color: 'var(--foreground)' }}
-                  formatter={(value: number) => [`${value} errors`, 'Errors']}
+                  formatter={(value: any) => [`${value} errors`, 'Errors']}
                 />
                 <Bar
                   dataKey="errors"
@@ -724,37 +724,37 @@ const MetricsChart: React.FC<MetricsChartProps> = ({ tenantId, refreshKey }) => 
                       <ResponsiveContainer width="100%" height={200}>
                         {isCounter ? (
                           <BarChart data={data}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 12%, 20%)" vertical={false} />
-                            <XAxis dataKey="time" stroke="hsl(220, 10%, 45%)" fontSize={11} tickLine={false} />
-                            <YAxis stroke="hsl(220, 10%, 45%)" fontSize={11} tickLine={false} axisLine={false} />
+                            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                            <XAxis dataKey="time" stroke="var(--muted-foreground)" fontSize={11} tickLine={false} />
+                            <YAxis stroke="var(--muted-foreground)" fontSize={11} tickLine={false} axisLine={false} />
                             <Tooltip
                               contentStyle={{
-                                backgroundColor: 'hsl(220, 15%, 10%)',
-                                borderColor: 'hsl(140, 70%, 50%)',
+                                backgroundColor: 'var(--card)',
+                                borderColor: 'var(--border)',
                                 borderRadius: '8px'
                               }}
-                              formatter={(val: number) => [val, 'Count']}
+                              formatter={(val: any) => [val, 'Count']}
                             />
-                            <Bar dataKey="value" fill="hsl(140, 70%, 55%)" radius={[4, 4, 0, 0]} />
+                            <Bar dataKey="value" fill="var(--success)" radius={[4, 4, 0, 0]} />
                           </BarChart>
                         ) : (
                           <AreaChart data={data}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 12%, 20%)" vertical={false} />
-                            <XAxis dataKey="time" stroke="hsl(220, 10%, 45%)" fontSize={11} tickLine={false} />
-                            <YAxis stroke="hsl(220, 10%, 45%)" fontSize={11} tickLine={false} axisLine={false} />
+                            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                            <XAxis dataKey="time" stroke="var(--muted-foreground)" fontSize={11} tickLine={false} />
+                            <YAxis stroke="var(--muted-foreground)" fontSize={11} tickLine={false} axisLine={false} />
                             <Tooltip
                               contentStyle={{
-                                backgroundColor: 'hsl(220, 15%, 10%)',
-                                borderColor: 'hsl(280, 70%, 50%)',
+                                backgroundColor: 'var(--card)',
+                                borderColor: 'var(--border)',
                                 borderRadius: '8px'
                               }}
-                              formatter={(val: number) => [val, 'Value']}
+                              formatter={(val: any) => [val, 'Value']}
                             />
                             <Area
                               type="monotone"
                               dataKey="value"
-                              stroke="hsl(280, 70%, 60%)"
-                              fill="hsl(280, 70%, 60%)"
+                              stroke="var(--accent)"
+                              fill="var(--accent)"
                               fillOpacity={0.2}
                               strokeWidth={2}
                             />

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import LogsPanel from './LogsPanel';
 import MetricsChart from './MetricsChart';
 import UptimeMonitors from './UptimeMonitors';
+import StatusPages from './StatusPages';
 import TracesPanel from './TracesPanel';
 import IntegrationPanel from './IntegrationPanel';
 import AdminPanel from './AdminPanel';
@@ -11,16 +12,13 @@ import { useTheme } from '../contexts/ThemeContext';
 import { API_BASE_URL } from '../config';
 import {
   List,
-  BarChart3,
   GitBranch,
   Sun,
   Moon,
   RefreshCw,
   LogOut,
   AlertCircle,
-  TrendingUp,
-  Server,
-  Globe
+  TrendingUp
 } from 'lucide-react';
 import './Dashboard.css';
 
