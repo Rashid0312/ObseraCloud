@@ -202,12 +202,22 @@ const LogsPanel: React.FC<LogsPanelProps> = ({ tenantId, refreshKey, compact, on
                   onClick={() => setExpandedLog(expandedLog === index ? null : index)}
                 >
                   <span className="obs-log-time">
-                    {new Date(log.timestamp).toLocaleTimeString('en-US', {
-                      hour12: false,
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      second: '2-digit',
-                    })}
+                    {(() => {
+                      // Fix for timezone issue: Backend sends naive datetime which implies UTC,
+                      // but browser parses as local. We force UTC interpretation by appending 'Z'
+                      // if no timezone offset is present.
+                      let ts = log.timestamp;
+                      if (!ts.endsWith('Z') && !ts.includes('+') && !ts.slice(-6).includes('-')) {
+                        ts += 'Z';
+                      }
+
+                      return new Date(ts).toLocaleTimeString('en-US', {
+                        hour12: false,
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                      });
+                    })()}
                   </span>
                   <span className={`obs-log-level ${getLevelClass(log.level)}`}>
                     {log.level.toUpperCase()}
