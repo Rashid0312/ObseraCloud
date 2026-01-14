@@ -78,7 +78,9 @@ INSERT INTO service_endpoints (tenant_id, service_name, endpoint_url, check_inte
     ('acme', 'API Gateway', 'http://localhost:5001/health', 60),
     ('acme', 'Web App', 'http://localhost:3001', 60),
     ('globex', 'API Gateway', 'http://localhost:5001/health', 60),
-    ('initech', 'API Gateway', 'http://localhost:5001/health', 60)
+    ('initech', 'API Gateway', 'http://localhost:5001/health', 60),
+    ('Tourni1010', 'TOurnament', 'https://tournament-v3.vercel.app/', 60),
+    ('Tourni1010', 'api', 'https://tournament-v3.vercel.app/account', 60)
 ON CONFLICT (tenant_id, service_name) DO NOTHING;
 
 -- Function to calculate uptime percentage

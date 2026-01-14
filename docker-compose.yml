@@ -17,7 +17,8 @@ services:
       - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
-      - ./backend/database.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./backend/database.sql:/docker-entrypoint-initdb.d/01_init.sql
+      - ./backend/uptime_schema.sql:/docker-entrypoint-initdb.d/02_uptime.sql
     networks:
       - obsera-net
     healthcheck:
