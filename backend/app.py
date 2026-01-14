@@ -2133,20 +2133,6 @@ def delete_logs():
         logger.error(f"Log deletion failed: {str(e)}")
         return jsonify({"error": f"Failed to delete logs: {str(e)}"}), 500
 
-# ==================== MAIN ====================
-
-if __name__ == '__main__':
-    logger.info("=" * 60)
-    logger.info("Multi-Tenant Observability Platform API Starting")
-    logger.info("=" * 60)
-    logger.info(f"Loki:       {LOKI_URL}")
-    logger.info(f"Prometheus: {PROMETHEUS_URL}")
-    logger.info(f"Tempo:      {TEMPO_URL}")
-    logger.info(f"Database:   {DATABASE_URL}")
-    logger.info("=" * 60)
-    
-    app.run(host='0.0.0.0', port=5001, debug=True)
-
 # ==================== STATUS PAGES ====================
 
 @app.route('/api/status-pages', methods=['GET', 'POST'])
@@ -2278,3 +2264,17 @@ def public_status_page(slug):
         return jsonify({"error": "Internal server error"}), 500
     finally:
         conn.close()
+# ==================== MAIN ====================
+
+if __name__ == '__main__':
+    logger.info("=" * 60)
+    logger.info("Multi-Tenant Observability Platform API Starting")
+    logger.info("=" * 60)
+    logger.info(f"Loki:       {LOKI_URL}")
+    logger.info(f"Prometheus: {PROMETHEUS_URL}")
+    logger.info(f"Tempo:      {TEMPO_URL}")
+    logger.info(f"Database:   {DATABASE_URL}")
+    logger.info("=" * 60)
+    
+    app.run(host='0.0.0.0', port=5001, debug=True)
+
