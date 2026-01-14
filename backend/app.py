@@ -1360,7 +1360,95 @@ def create_endpoint():
         return jsonify({"error": str(e)}), 500
     finally:
         conn.close()
-
+@app.route('/api/monitors', methods=['GET', 'POST'])
+@limiter.limit("60 per minute")
+def manage_monitors():
+    """Manage uptime monitors"""
+    tenant_id = request.args.get('tenant_id')
+    
+    # For POST requests, tenant_id might be in body
+    if request.method == 'POST':
+        data = request.get_json()
+        if not tenant_id and data:
+            tenant_id = data.get('tenant_id')
+            
+    if not tenant_id:
+        return jsonify({"error": "tenant_id query parameter required"}), 400
+    
+    # SECURITY: Verify authentication (this function already checks JWT)
+    is_valid, error_response = verify_tenant_access(tenant_id)
+    if not is_valid:
+        return error_response
+    
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({"error": "Database unavailable"}), 503
+        
+    try:
+        # LIST MONITORS
+        if request.method == 'GET':
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                # Fetch monitors with their latest status - simplified query
+                cur.execute("""
+                    SELECT e.id, e.service_name, e.endpoint_url, e.check_interval_seconds, 
+                           e.is_active, e.created_at,
+                           (SELECT status FROM health_checks h WHERE h.endpoint_id = e.id ORDER BY checked_at DESC LIMIT 1) as current_status,
+                           (SELECT response_time_ms FROM health_checks h WHERE h.endpoint_id = e.id ORDER BY checked_at DESC LIMIT 1) as response_time_ms,
+                           (SELECT uptime_percentage FROM uptime_summary u WHERE u.endpoint_id = e.id AND u.period_type = 'hourly' ORDER BY period_start DESC LIMIT 1) as uptime_24h
+                    FROM service_endpoints e
+                    WHERE e.tenant_id = %s
+                    ORDER BY e.created_at DESC
+                """, (tenant_id,))
+                monitors = cur.fetchall()
+                
+                # Format dates
+                for m in monitors:
+                    if m['created_at']:
+                        m['created_at'] = m['created_at'].isoformat()
+                    # Default status if no checks yet
+                    if not m['current_status']:
+                        m['current_status'] = 'pending'
+                        
+                return jsonify({"monitors": [dict(m) for m in monitors]}), 200
+        
+        # CREATE MONITOR
+        elif request.method == 'POST':
+            data = request.get_json()
+            service_name = sanitize_input(data.get('service_name'))
+            endpoint_url = data.get('endpoint_url')
+            check_interval = int(data.get('check_interval', 60))
+            
+            if not service_name or not endpoint_url:
+                return jsonify({"error": "service_name and endpoint_url are required"}), 400
+                
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute("""
+                    INSERT INTO service_endpoints 
+                        (tenant_id, service_name, endpoint_url, check_interval_seconds)
+                    VALUES (%s, %s, %s, %s)
+                    RETURNING id, service_name, endpoint_url, check_interval_seconds, is_active, created_at
+                """, (tenant_id, service_name, endpoint_url, check_interval))
+                
+                new_monitor = cur.fetchone()
+                conn.commit()
+                
+                new_monitor['created_at'] = new_monitor['created_at'].isoformat()
+                logger.info(f"Monitor created: {tenant_id}/{service_name}")
+                
+                return jsonify({
+                    "message": "Monitor created successfully",
+                    "monitor": dict(new_monitor)
+                }), 201
+                
+    except Exception as e:
+        logger.error(f"Monitor management failed: {e}")
+        conn.rollback()
+        # Check for duplicate
+        if "unique constraint" in str(e).lower():
+            return jsonify({"error": "A monitor with this service name already exists"}), 409
+        return jsonify({"error": str(e)}), 500
+    finally:
+        conn.close()
 
 @app.route('/api/endpoints/<int:endpoint_id>', methods=['DELETE'])
 @limiter.limit("30 per minute")

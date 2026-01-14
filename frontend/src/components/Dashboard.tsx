@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import LogsPanel from './LogsPanel';
 import MetricsChart from './MetricsChart';
+import UptimeMonitors from './UptimeMonitors';
 import TracesPanel from './TracesPanel';
 import IntegrationPanel from './IntegrationPanel';
 import AdminPanel from './AdminPanel';
@@ -250,15 +251,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, onGoHome }) => {
           )}
 
           {activeView === 'uptime' && (
-            <div className="placeholder-view glass-panel">
-              <div className="placeholder-content">
-                <Server size={64} className="placeholder-icon" />
-                <h2>Uptime Monitors</h2>
-                <p>Global availability checks coming soon.</p>
-                <button className="dashboard-action-btn" style={{ marginTop: '20px' }}>
-                  Create Monitor
-                </button>
-              </div>
+            <div className="dashboard-content fade-in">
+              <UptimeMonitors tenantId={tenantId} refreshKey={refreshKey} />
             </div>
           )}
 
