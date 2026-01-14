@@ -513,3 +513,53 @@
   color: var(--muted-foreground);
   font-variant-numeric: tabular-nums;
 }
+
+/* Dashboard Panel Context - Compact view when inside dashboard overview */
+.dashboard-panel .obs-metrics {
+  padding: 0;
+}
+
+.dashboard-panel .obs-metrics-header {
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+}
+
+.dashboard-panel .obs-metrics-cards {
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.dashboard-panel .obs-metric-card {
+  padding: 12px;
+}
+
+.dashboard-panel .obs-card-value {
+  font-size: 1.5rem;
+}
+
+.dashboard-panel .obs-card-label {
+  font-size: 0.7rem;
+}
+
+.dashboard-panel .obs-card-sub {
+  font-size: 0.7rem;
+}
+
+.dashboard-panel .obs-uptime-ring {
+  width: 36px;
+  height: 36px;
+  top: 12px;
+  right: 12px;
+}
+
+/* Hide charts section in dashboard panel (too overwhelming) */
+.dashboard-panel .obs-metrics-charts,
+.dashboard-panel .obs-metrics-section {
+  display: none;
+}
+
+/* Hide last updated in compact mode */
+.dashboard-panel .obs-last-updated {
+  display: none;
+}
