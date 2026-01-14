@@ -257,15 +257,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, onGoHome }) => {
           )}
 
           {activeView === 'status-pages' && (
-            <div className="placeholder-view glass-panel">
-              <div className="placeholder-content">
-                <Globe size={64} className="placeholder-icon" />
-                <h2>Public Status Pages</h2>
-                <p>Communicate outages to your users effectively.</p>
-                <button className="dashboard-action-btn" style={{ marginTop: '20px' }}>
-                  Create Status Page
-                </button>
-              </div>
+            <div className="dashboard-content fade-in">
+              <StatusPages tenantId={tenantId} />
             </div>
           )}
 

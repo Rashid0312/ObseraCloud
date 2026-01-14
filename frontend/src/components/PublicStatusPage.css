@@ -1,0 +1,129 @@
+.public-status-page {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2rem;
+    min-height: 100vh;
+    color: var(--text-primary);
+}
+
+.status-header {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.header-content h1 {
+    font-size: 2rem;
+    margin: 0 0 0.5rem 0;
+}
+
+.header-content p {
+    color: var(--text-muted);
+    margin: 0;
+}
+
+.overall-status {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: 50px;
+    font-weight: 500;
+}
+
+.overall-status.up {
+    background: var(--success);
+    color: white;
+    box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+}
+
+.overall-status.issue {
+    background: var(--warning);
+    color: black;
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+}
+
+.public-monitor-card {
+    margin-bottom: 1rem;
+    padding: 1.5rem;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.monitor-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.monitor-identity {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.monitor-identity h3 {
+    margin: 0;
+    font-weight: 500;
+}
+
+.monitor-uptime {
+    text-align: right;
+}
+
+.monitor-uptime .label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    display: block;
+}
+
+.monitor-uptime .value {
+    font-weight: 600;
+    font-family: monospace;
+}
+
+.status-footer {
+    text-align: center;
+    margin-top: 4rem;
+    padding-top: 2rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    color: var(--text-muted);
+}
+
+/* Reusing history bar styles from UptimeMonitors.css via global or duplicate */
+/* Ideally we import or duplicate necessary styles since this runs standalone */
+.history-bar-container {
+    padding-top: 0.5rem;
+}
+
+.history-bar {
+    display: flex;
+    gap: 3px;
+    height: 32px;
+    /* Taller for public view */
+}
+
+.history-block {
+    flex: 1;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.history-block.up {
+    background: var(--success);
+}
+
+.history-block.down {
+    background: var(--error);
+}
+
+.history-block.degraded {
+    background: var(--warning);
+}

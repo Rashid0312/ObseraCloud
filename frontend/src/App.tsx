@@ -2,10 +2,11 @@ import { useState, useEffect, useCallback } from 'react';
 import LandingPage from './components/LandingPage';
 import Dashboard from './components/Dashboard';
 import Login from './components/Login';
+import PublicStatusPage from './components/PublicStatusPage';
 import { ThemeProvider } from './contexts/ThemeContext';
 import './index.css';
 
-type View = 'landing' | 'login' | 'dashboard';
+type View = 'landing' | 'login' | 'dashboard' | 'public-status';
 
 // Session timeout in milliseconds (30 minutes)
 const SESSION_TIMEOUT = 30 * 60 * 1000;
@@ -45,6 +46,12 @@ function App() {
   }, []);
 
   useEffect(() => {
+    // Check for public status page route
+    if (window.location.pathname.startsWith('/status/')) {
+      setCurrentView('public-status');
+      return;
+    }
+
     // Check if user has valid session on load
     if (isSessionValid()) {
       updateActivity();
@@ -109,6 +116,9 @@ function App() {
       )}
       {currentView === 'dashboard' && (
         <Dashboard onLogout={handleLogout} onGoHome={() => setCurrentView('login')} />
+      )}
+      {currentView === 'public-status' && (
+        <PublicStatusPage />
       )}
     </ThemeProvider>
   );

@@ -104,3 +104,28 @@ BEGIN
     RETURN ROUND((up_checks::DECIMAL / total_checks) * 100, 2);
 END;
 $$ LANGUAGE plpgsql;
+
+-- Status Pages Configuration
+CREATE TABLE IF NOT EXISTS status_pages (
+    id SERIAL PRIMARY KEY,
+    tenant_id VARCHAR(100) NOT NULL,
+    slug VARCHAR(100) NOT NULL,
+    title VARCHAR(200) NOT NULL,
+    description TEXT,
+    is_public BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(tenant_id, slug),
+    UNIQUE(slug) -- Public slugs must be globally unique for simplicity in this version
+);
+
+-- Link Monitors to Status Pages
+CREATE TABLE IF NOT EXISTS status_page_monitors (
+    status_page_id INTEGER REFERENCES status_pages(id) ON DELETE CASCADE,
+    endpoint_id INTEGER REFERENCES service_endpoints(id) ON DELETE CASCADE,
+    display_order INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT NOW(),
+    PRIMARY KEY (status_page_id, endpoint_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_status_pages_slug ON status_pages(slug);
