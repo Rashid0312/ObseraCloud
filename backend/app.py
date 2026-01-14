@@ -1394,6 +1394,17 @@ def manage_monitors():
                            e.is_active, e.created_at,
                            (SELECT status FROM health_checks h WHERE h.endpoint_id = e.id ORDER BY checked_at DESC LIMIT 1) as current_status,
                            (SELECT response_time_ms FROM health_checks h WHERE h.endpoint_id = e.id ORDER BY checked_at DESC LIMIT 1) as response_time_ms,
+                           (SELECT checked_at FROM health_checks h WHERE h.endpoint_id = e.id ORDER BY checked_at DESC LIMIT 1) as last_checked,
+                           (
+                               SELECT json_agg(json_build_object('status', h.status, 'checked_at', h.checked_at))
+                               FROM (
+                                   SELECT status, checked_at 
+                                   FROM health_checks h 
+                                   WHERE h.endpoint_id = e.id 
+                                   ORDER BY h.checked_at DESC 
+                                   LIMIT 20
+                               ) h
+                           ) as recent_checks,
                            (SELECT uptime_percentage FROM uptime_summary u WHERE u.endpoint_id = e.id AND u.period_type = 'hourly' ORDER BY period_start DESC LIMIT 1) as uptime_24h
                     FROM service_endpoints e
                     WHERE e.tenant_id = %s
@@ -1405,6 +1416,13 @@ def manage_monitors():
                 for m in monitors:
                     if m['created_at']:
                         m['created_at'] = m['created_at'].isoformat()
+                    if m['last_checked']:
+                        m['last_checked'] = m['last_checked'].isoformat()
+                    
+                    # Ensure recent_checks is a list
+                    if not m['recent_checks']:
+                        m['recent_checks'] = []
+                        
                     # Default status if no checks yet
                     if not m['current_status']:
                         m['current_status'] = 'pending'

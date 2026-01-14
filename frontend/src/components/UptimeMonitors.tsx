@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
     Server, Plus, Trash2, CheckCircle, AlertTriangle,
-    XCircle, Clock, Globe, RefreshCw, Activity
+    XCircle, Clock, Globe
 } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 import './UptimeMonitors.css';
@@ -16,7 +16,18 @@ interface Monitor {
     response_time_ms: number | null;
     uptime_24h: string | null;
     created_at: string;
+    last_checked: string | null;
+    recent_checks: Array<{ status: string; checked_at: string }>;
 }
+
+const formatTimeAgo = (dateString: string | null) => {
+    if (!dateString) return 'Never';
+    const seconds = Math.floor((new Date().getTime() - new Date(dateString).getTime()) / 1000);
+    if (seconds < 60) return `${seconds}s ago`;
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+    return `${Math.floor(seconds / 86400)}d ago`;
+};
 
 interface UptimeMonitorsProps {
     tenantId: string;
@@ -29,6 +40,12 @@ const UptimeMonitors: React.FC<UptimeMonitorsProps> = ({ tenantId, refreshKey })
     const [error, setError] = useState('');
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [creating, setCreating] = useState(false);
+    const [timeNow, setTimeNow] = useState(Date.now()); // For updating relative time
+
+    useEffect(() => {
+        const timer = setInterval(() => setTimeNow(Date.now()), 60000);
+        return () => clearInterval(timer);
+    }, []);
 
     // Form State
     const [newMonitor, setNewMonitor] = useState({
@@ -184,27 +201,50 @@ const UptimeMonitors: React.FC<UptimeMonitorsProps> = ({ tenantId, refreshKey })
 
                             <div className="monitor-stats">
                                 <div className="stat-item">
-                                    <span className="stat-label">Response Time</span>
+                                    <span className="stat-label">Response</span>
                                     <span className="stat-value">
                                         {monitor.response_time_ms ? `${monitor.response_time_ms}ms` : '-'}
                                     </span>
                                 </div>
                                 <div className="stat-item">
-                                    <span className="stat-label">24h Uptime</span>
+                                    <span className="stat-label">Uptime (24h)</span>
                                     <span className={`stat-value ${parseFloat(monitor.uptime_24h || '100') < 99.9 ? 'warning' : 'good'}`}>
                                         {monitor.uptime_24h ? `${monitor.uptime_24h}%` : '100%'}
                                     </span>
                                 </div>
                                 <div className="stat-item">
-                                    <span className="stat-label">Interval</span>
-                                    <span className="stat-value">{monitor.check_interval_seconds}s</span>
+                                    <span className="stat-label">Last Checked</span>
+                                    <span className="stat-value text-sm" data-tick={timeNow}>
+                                        {formatTimeAgo(monitor.last_checked)}
+                                    </span>
                                 </div>
                             </div>
 
-                            <div className="monitor-timeline">
-                                {/* Visual timeline placeholder - creates a moving pulse effect */}
-                                <div className={`pulse-line ${monitor.current_status}`}></div>
+                            {/* History Bar */}
+                            <div className="history-bar-container">
+                                <div className="history-label">Recent History</div>
+                                <div className="history-bar">
+                                    {[...Array(20)].map((_, i) => {
+                                        // Index 0 is newest check result
+                                        const index = 19 - i; // Try to order left-to-right (oldest -> newest)
+                                        const check = monitor.recent_checks && index < monitor.recent_checks.length
+                                            ? monitor.recent_checks[index]
+                                            : null;
+
+                                        const status = check ? check.status : 'empty';
+
+                                        return (
+                                            <div
+                                                key={i}
+                                                className={`history-block ${status || 'empty'}`}
+                                                title={check ? new Date(check.checked_at).toLocaleTimeString() : 'No data'}
+                                            />
+                                        );
+                                    })}
+                                </div>
                             </div>
+
+
                         </div>
                     ))
                 )}
