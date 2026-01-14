@@ -181,6 +181,9 @@ services:
     container_name: obsera-health-checker
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-obsera_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-obsera}
+      - CLICKHOUSE_HOST=clickhouse
+      - CLICKHOUSE_PORT=8123
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
     depends_on:
       postgres:
         condition: service_healthy
