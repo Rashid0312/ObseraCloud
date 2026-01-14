@@ -217,11 +217,11 @@ def check_for_outage(conn, result):
                             # 1. Get recent error traces
                             traces = clickhouse_client.get_recent_error_traces(result['tenant_id'], minutes=5)
                             # 2. Analyze with AI
-                            if traces:
-                                ai_insight = ai_agent.analyze_outage(
-                                    monitor_error=f"Status: {result['status']}, Code: {result['status_code']}, Error: {result['error_message']}", 
-                                    trace_data=traces
-                                )
+                            # 2. Analyze with AI (even if traces are empty, to explain why)
+                            ai_insight = ai_agent.analyze_outage(
+                                monitor_error=f"Status: {result['status']}, Code: {result['status_code']}, Error: {result['error_message']}", 
+                                trace_data=traces
+                            )
                         except Exception as e:
                             logger.error(f"AI Investigation failed: {e}")
 

@@ -80,7 +80,10 @@ def analyze_outage(monitor_error, trace_data):
         return "AI Configuration Missing."
         
     if not trace_data:
-        return "No recent traces found to correlate with this outage."
+        # Fallback for when no traces are available (e.g. hard down)
+        if "Connection error" in monitor_error or "timeout" in monitor_error.lower():
+            return "Unable to correlate with internal traces because the service is unreachable. This suggests a network failure or the application is completely stopped."
+        return "No recent error traces found in ClickHouse. The outage might be external to the application logic."
 
     # Summarize traces for context
     trace_summary = []
