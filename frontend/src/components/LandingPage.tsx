@@ -167,6 +167,44 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
                 </div>
             </section>
 
+            {/* About Section */}
+            <section className="landing-features" id="about" style={{ background: 'var(--background)' }}>
+                <div className="landing-features-header">
+                    <span className="landing-section-badge">About Us</span>
+                    <h2 className="landing-features-title">Observability for Everyone</h2>
+                    <p className="landing-features-subtitle">
+                        We believe that understanding your production systems shouldn't require a PhD in distributed systems.
+                        ObseraCloud makes enterprise-grade monitoring accessible to every developer.
+                    </p>
+                </div>
+            </section>
+
+            {/* Pricing Section */}
+            <section className="landing-features" id="pricing">
+                <div className="landing-features-header">
+                    <span className="landing-section-badge">Pricing</span>
+                    <h2 className="landing-features-title">Simple, Transparent Pricing</h2>
+                    <p className="landing-features-subtitle">
+                        Start for free, scale as you grow. No hidden fees or surprise overages.
+                    </p>
+                </div>
+                {/* Pricing Grid Placeholder */}
+                <div className="landing-features-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))' }}>
+                    <div className="landing-feature-card" style={{ textAlign: 'center' }}>
+                        <h3>Starter</h3>
+                        <div style={{ fontSize: '2.5rem', fontWeight: 'bold', margin: '1rem 0' }}>$0</div>
+                        <p>Perfect for side projects and hobbyists.</p>
+                        <button className="landing-cta-secondary" style={{ width: '100%', marginTop: '1rem', justifyContent: 'center' }}>Start Free</button>
+                    </div>
+                    <div className="landing-feature-card" style={{ textAlign: 'center', borderColor: 'var(--primary)' }}>
+                        <h3>Pro</h3>
+                        <div style={{ fontSize: '2.5rem', fontWeight: 'bold', margin: '1rem 0' }}>$49</div>
+                        <p>For growing teams and production apps.</p>
+                        <button className="landing-cta-primary" style={{ width: '100%', marginTop: '1rem', justifyContent: 'center' }}>Get Pro</button>
+                    </div>
+                </div>
+            </section>
+
             {/* Footer */}
             <footer className="landing-footer">
                 <div className="landing-footer-content">

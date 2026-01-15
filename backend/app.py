@@ -2150,7 +2150,6 @@ def manage_status_pages():
         if request.method == 'GET':
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
                 cur.execute("""
-                cur.execute("""
                     SELECT id, slug, title, description, is_public, requires_auth, created_at,
                            (SELECT COUNT(*) FROM status_page_monitors spm WHERE spm.status_page_id = sp.id) as monitor_count
                     FROM status_pages sp
