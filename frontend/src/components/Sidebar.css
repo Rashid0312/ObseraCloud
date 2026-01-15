@@ -22,6 +22,15 @@
     gap: 12px;
     cursor: pointer;
     border-bottom: 1px solid var(--border);
+    transition: background 0.2s ease;
+}
+
+.sidebar-header:hover {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.sidebar-header:hover .sidebar-logo-text {
+    color: var(--primary);
 }
 
 .sidebar-logo-icon {

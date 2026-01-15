@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useEffect, useCallback } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import LandingPage from './components/LandingPage';
 import Dashboard from './components/Dashboard';
 import Login from './components/Login';
@@ -6,15 +7,13 @@ import PublicStatusPage from './components/PublicStatusPage';
 import { ThemeProvider } from './contexts/ThemeContext';
 import './index.css';
 
-type View = 'landing' | 'login' | 'dashboard' | 'public-status';
-
 // Session timeout in milliseconds (30 minutes)
 const SESSION_TIMEOUT = 30 * 60 * 1000;
 
-function App() {
-  const [currentView, setCurrentView] = useState<View>('landing');
+// Protected Route wrapper
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const navigate = useNavigate();
 
-  // Check if session is still valid
   const isSessionValid = useCallback(() => {
     const tenantId = localStorage.getItem('tenant_id');
     const lastActivity = localStorage.getItem('last_activity');
@@ -24,9 +23,7 @@ function App() {
     const lastActivityTime = parseInt(lastActivity, 10);
     const now = Date.now();
 
-    // Session expired if inactive for too long
     if (now - lastActivityTime > SESSION_TIMEOUT) {
-      // Clear expired session
       localStorage.removeItem('tenant_id');
       localStorage.removeItem('tenant_name');
       localStorage.removeItem('token');
@@ -38,64 +35,71 @@ function App() {
     return true;
   }, []);
 
-  // Update activity timestamp
-  const updateActivity = useCallback(() => {
-    if (localStorage.getItem('tenant_id')) {
-      localStorage.setItem('last_activity', Date.now().toString());
-    }
-  }, []);
-
   useEffect(() => {
-    // Check for public status page route
-    if (window.location.pathname.startsWith('/status/')) {
-      setCurrentView('public-status');
-      return;
+    if (!isSessionValid()) {
+      navigate('/login');
     }
+  }, [isSessionValid, navigate]);
 
-    // Check if user has valid session on load
-    if (isSessionValid()) {
-      updateActivity();
-      setCurrentView('dashboard');
-    }
-  }, [isSessionValid, updateActivity]);
-
-  // Track user activity to extend session
+  // Update activity on user interaction
   useEffect(() => {
-    if (currentView !== 'dashboard') return;
+    const updateActivity = () => {
+      if (localStorage.getItem('tenant_id')) {
+        localStorage.setItem('last_activity', Date.now().toString());
+      }
+    };
 
     const events = ['mousedown', 'keydown', 'scroll', 'touchstart'];
+    events.forEach(event => window.addEventListener(event, updateActivity));
 
-    const handleActivity = () => {
-      updateActivity();
-    };
-
-    events.forEach(event => {
-      window.addEventListener(event, handleActivity);
-    });
-
-    // Check session validity periodically
     const intervalId = setInterval(() => {
       if (!isSessionValid()) {
-        setCurrentView('login');
+        navigate('/login');
       }
-    }, 60000); // Check every minute
+    }, 60000);
 
     return () => {
-      events.forEach(event => {
-        window.removeEventListener(event, handleActivity);
-      });
+      events.forEach(event => window.removeEventListener(event, updateActivity));
       clearInterval(intervalId);
     };
-  }, [currentView, isSessionValid, updateActivity]);
+  }, [isSessionValid, navigate]);
 
-  const handleGetStarted = () => {
-    setCurrentView('login');
-  };
+  return isSessionValid() ? <>{children}</> : null;
+}
+
+// Login wrapper that redirects if already logged in
+function LoginRoute() {
+  const navigate = useNavigate();
 
   const handleLoginSuccess = () => {
     localStorage.setItem('last_activity', Date.now().toString());
-    setCurrentView('dashboard');
+    navigate('/dashboard');
   };
+
+  // Check if already logged in
+  useEffect(() => {
+    const tenantId = localStorage.getItem('tenant_id');
+    const lastActivity = localStorage.getItem('last_activity');
+    if (tenantId && lastActivity) {
+      const lastActivityTime = parseInt(lastActivity, 10);
+      if (Date.now() - lastActivityTime < SESSION_TIMEOUT) {
+        navigate('/dashboard');
+      }
+    }
+  }, [navigate]);
+
+  return <Login onLoginSuccess={handleLoginSuccess} />;
+}
+
+// Landing page wrapper
+function LandingRoute() {
+  const navigate = useNavigate();
+  return <LandingPage onGetStarted={() => navigate('/login')} />;
+}
+
+// Dashboard wrapper
+function DashboardRoute() {
+  const navigate = useNavigate();
 
   const handleLogout = () => {
     localStorage.removeItem('tenant_id');
@@ -103,23 +107,62 @@ function App() {
     localStorage.removeItem('token');
     localStorage.removeItem('api_key');
     localStorage.removeItem('last_activity');
-    setCurrentView('login');
+    navigate('/login');
   };
 
+  const handleGoHome = () => {
+    navigate('/');
+  };
+
+  return <Dashboard onLogout={handleLogout} onGoHome={handleGoHome} />;
+}
+
+// Redirect helper for root path
+function RootRedirect() {
+  const tenantId = localStorage.getItem('tenant_id');
+  const lastActivity = localStorage.getItem('last_activity');
+
+  if (tenantId && lastActivity) {
+    const lastActivityTime = parseInt(lastActivity, 10);
+    if (Date.now() - lastActivityTime < SESSION_TIMEOUT) {
+      return <Navigate to="/dashboard" replace />;
+    }
+  }
+
+  return <LandingRoute />;
+}
+
+function App() {
   return (
     <ThemeProvider>
-      {currentView === 'landing' && (
-        <LandingPage onGetStarted={handleGetStarted} />
-      )}
-      {currentView === 'login' && (
-        <Login onLoginSuccess={handleLoginSuccess} />
-      )}
-      {currentView === 'dashboard' && (
-        <Dashboard onLogout={handleLogout} onGoHome={() => setCurrentView('login')} />
-      )}
-      {currentView === 'public-status' && (
-        <PublicStatusPage />
-      )}
+      <BrowserRouter>
+        <Routes>
+          {/* Landing page at root */}
+          <Route path="/" element={<RootRedirect />} />
+
+          {/* Explicit landing page route */}
+          <Route path="/landing" element={<LandingRoute />} />
+
+          {/* Login page */}
+          <Route path="/login" element={<LoginRoute />} />
+
+          {/* Protected dashboard */}
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <DashboardRoute />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Public status pages */}
+          <Route path="/status/:slug" element={<PublicStatusPage />} />
+
+          {/* Catch-all redirect to landing */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </BrowserRouter>
     </ThemeProvider>
   );
 }

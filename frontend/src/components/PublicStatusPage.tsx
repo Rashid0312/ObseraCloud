@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import { CheckCircle, AlertTriangle, XCircle, Clock, Lock, ArrowRight } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 import './StatusPages.css';
@@ -23,6 +24,7 @@ interface PageData {
 }
 
 const PublicStatusPage: React.FC = () => {
+    const { slug: routeSlug } = useParams<{ slug: string }>();
     const [data, setData] = useState<PageData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -30,21 +32,18 @@ const PublicStatusPage: React.FC = () => {
 
     // Auth State
     const [password, setPassword] = useState('');
-    const [token, setToken] = useState<string | null>(localStorage.getItem('sp_token')); // Simple persistence
+    const [token, setToken] = useState<string | null>(localStorage.getItem('sp_token'));
     const [unlocking, setUnlocking] = useState(false);
 
     useEffect(() => {
-        const pathParts = window.location.pathname.split('/');
-        const slugIndex = pathParts.indexOf('status');
-        if (slugIndex !== -1 && pathParts[slugIndex + 1]) {
-            const s = pathParts[slugIndex + 1];
-            setSlug(s);
-            fetchPage(s, token);
+        if (routeSlug) {
+            setSlug(routeSlug);
+            fetchPage(routeSlug, token);
         } else {
             setError('Invalid Status Page URL');
             setLoading(false);
         }
-    }, [token]); // Re-fetch if token changes
+    }, [routeSlug, token]);
 
     const fetchPage = async (slug: string, authToken: string | null) => {
         try {
