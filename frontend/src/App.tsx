@@ -111,7 +111,7 @@ function DashboardRoute() {
   };
 
   const handleGoHome = () => {
-    navigate('/');
+    navigate('/landing');
   };
 
   return <Dashboard onLogout={handleLogout} onGoHome={handleGoHome} />;
