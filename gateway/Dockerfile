@@ -10,4 +10,4 @@ COPY . .
 
 EXPOSE 4319
 
-CMD ["gunicorn", "--bind", "0.0.0.0:4319", "--workers", "2", "--threads", "4", "--timeout", "60", "auth_gateway:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:4319", "--workers", "3", "--threads", "4", "--timeout", "120", "auth_gateway:app"]
