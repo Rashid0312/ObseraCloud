@@ -273,9 +273,21 @@ const MetricsChart: React.FC<MetricsChartProps> = ({ tenantId, refreshKey }) => 
   const responseTimeData = metricsByName['http_response_time_seconds'] || [];
   const durationData = metricsByName['http.server.duration'] || [];
 
-  // Calculate totals
-  const totalRequests = requestsData.reduce((sum, m) => sum + parseFloat(m.value), 0);
-  const totalErrors = errorsData.reduce((sum, m) => sum + parseFloat(m.value), 0);
+  // Helper: Calculate delta for cumulative counters (max - min in time window)
+  // This gives the actual count of events that happened within the selected period
+  const calculateCounterDelta = (data: LokiMetric[]) => {
+    if (data.length === 0) return 0;
+    const values = data.map(m => parseFloat(m.value)).filter(v => !isNaN(v));
+    if (values.length === 0) return 0;
+    const maxVal = Math.max(...values);
+    const minVal = Math.min(...values);
+    // Delta = increase over the time period
+    return Math.max(0, maxVal - minVal);
+  };
+
+  // Calculate totals using delta (not sum) for cumulative counters
+  const totalRequests = calculateCounterDelta(requestsData);
+  const totalErrors = calculateCounterDelta(errorsData);
 
   // Calculate from whichever metric is available
   let avgResponseMs = 0;
