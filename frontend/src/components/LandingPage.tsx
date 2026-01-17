@@ -1,12 +1,77 @@
-import React from 'react';
-import { Activity, ArrowRight, Shield, BarChart3, Zap, Globe, Layers, Eye, Lock } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Activity, ArrowRight, Shield, BarChart3, Zap, Globe, Layers, Eye, Lock, AlertTriangle, CheckCircle } from 'lucide-react';
 import './LandingPage.css';
 
 interface LandingPageProps {
     onGetStarted: () => void;
 }
 
+// Animated Counter Hook
+const useCountUp = (end: number, duration: number = 2000, start: number = 0) => {
+    const [count, setCount] = useState(start);
+    const countRef = useRef(start);
+    const [hasStarted, setHasStarted] = useState(false);
+
+    useEffect(() => {
+        if (!hasStarted) return;
+
+        const startTime = Date.now();
+        const tick = () => {
+            const elapsed = Date.now() - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            // Ease out cubic
+            const eased = 1 - Math.pow(1 - progress, 3);
+            countRef.current = Math.floor(start + (end - start) * eased);
+            setCount(countRef.current);
+            if (progress < 1) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+    }, [hasStarted, end, duration, start]);
+
+    return { count, start: () => setHasStarted(true) };
+};
+
 const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
+    const [isErrorMode, setIsErrorMode] = useState(false);
+    const heroRef = useRef<HTMLDivElement>(null);
+
+    // Animated counters
+    const logsCounter = useCountUp(2400000, 2500);
+    const uptimeCounter = useCountUp(999, 2000, 900);
+    const responseCounter = useCountUp(45, 1500);
+
+    // Start counters when hero is visible
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting) {
+                    logsCounter.start();
+                    uptimeCounter.start();
+                    responseCounter.start();
+                }
+            },
+            { threshold: 0.3 }
+        );
+        if (heroRef.current) observer.observe(heroRef.current);
+        return () => observer.disconnect();
+    }, []);
+
+    // Reset error mode after 3 seconds
+    useEffect(() => {
+        if (isErrorMode) {
+            const timeout = setTimeout(() => setIsErrorMode(false), 3000);
+            return () => clearTimeout(timeout);
+        }
+    }, [isErrorMode]);
+
+    const formatNumber = (num: number) => {
+        if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+        if (num >= 1000) return (num / 1000).toFixed(0) + 'K';
+        return num.toString();
+    };
+
+
+
     return (
         <div className="landing-container">
             {/* Background effects */}
@@ -26,7 +91,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
                 </div>
                 <nav className="landing-nav">
                     <a href="#features" className="landing-nav-link">Features</a>
-                    <a href="#about" className="landing-nav-link">About</a>
+                    <a href="#how-it-works" className="landing-nav-link">How It Works</a>
                     <a href="#pricing" className="landing-nav-link">Pricing</a>
                 </nav>
                 <button className="landing-login-btn" onClick={onGetStarted}>
@@ -36,7 +101,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
             </header>
 
             {/* Hero Section */}
-            <section className="landing-hero">
+            <section className="landing-hero" ref={heroRef}>
                 <div className="landing-hero-content">
                     <div className="landing-badge">
                         <Shield className="landing-badge-icon" />
@@ -73,9 +138,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
                     </div>
                 </div>
 
-                {/* Hero Visual */}
+                {/* Hero Visual - Interactive Dashboard Preview */}
                 <div className="landing-hero-visual">
-                    <div className="landing-dashboard-preview">
+                    <div className={`landing-dashboard-preview ${isErrorMode ? 'error-state' : ''}`}>
                         <div className="landing-preview-header">
                             <div className="landing-preview-dots">
                                 <span className="dot" />
@@ -85,7 +150,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
                             <span className="landing-preview-title">Live Dashboard</span>
                             <span className="landing-preview-status">
                                 <span className="status-dot" />
-                                Connected
+                                {isErrorMode ? 'Error Detected' : 'Connected'}
                             </span>
                         </div>
                         <div className="landing-preview-content">
@@ -94,7 +159,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
                                     <Layers className="stat-svg" />
                                 </span>
                                 <div className="stat-info">
-                                    <span className="stat-value">2.4M</span>
+                                    <span className="stat-value">{formatNumber(logsCounter.count)}</span>
                                     <span className="stat-label">Logs Processed</span>
                                 </div>
                             </div>
@@ -103,7 +168,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
                                     <Activity className="stat-svg" />
                                 </span>
                                 <div className="stat-info">
-                                    <span className="stat-value success">99.9%</span>
+                                    <span className="stat-value success">
+                                        {isErrorMode ? '87.2' : (uptimeCounter.count / 10).toFixed(1)}%
+                                    </span>
                                     <span className="stat-label">Uptime</span>
                                 </div>
                             </div>
@@ -112,7 +179,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
                                     <Zap className="stat-svg" />
                                 </span>
                                 <div className="stat-info">
-                                    <span className="stat-value">45ms</span>
+                                    <span className="stat-value">{isErrorMode ? '2.4s' : `${responseCounter.count}ms`}</span>
                                     <span className="stat-label">Avg Response</span>
                                 </div>
                             </div>
@@ -126,12 +193,26 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
                                 <div className="chart-bar" style={{ height: '70%' }} />
                                 <div className="chart-bar" style={{ height: '85%' }} />
                                 <div className="chart-bar" style={{ height: '55%' }} />
-                                <div className="chart-bar active" style={{ height: '95%' }} />
+                                <div className="chart-bar active" style={{ height: isErrorMode ? '20%' : '95%' }} />
                             </div>
                         </div>
+                        {/* Simulate Error Button */}
+                        <button
+                            className="simulate-error-btn"
+                            onClick={() => setIsErrorMode(true)}
+                            disabled={isErrorMode}
+                        >
+                            {isErrorMode ? (
+                                <><CheckCircle /> Investigating...</>
+                            ) : (
+                                <><AlertTriangle /> Simulate Error</>
+                            )}
+                        </button>
                     </div>
                 </div>
             </section>
+
+
 
             {/* Features Section */}
             <section className="landing-features" id="features">
@@ -167,17 +248,41 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
                 </div>
             </section>
 
-            {/* About Section */}
-            <section className="landing-features" id="about" style={{ background: 'var(--background)' }}>
+            {/* How It Works Section */}
+            <section className="landing-features" id="how-it-works">
                 <div className="landing-features-header">
-                    <span className="landing-section-badge">About Us</span>
-                    <h2 className="landing-features-title">Observability for Everyone</h2>
+                    <span className="landing-section-badge">How It Works</span>
+                    <h2 className="landing-features-title">Get started in 3 simple steps</h2>
                     <p className="landing-features-subtitle">
-                        We believe that understanding your production systems shouldn't require a PhD in distributed systems.
-                        ObseraCloud makes enterprise-grade monitoring accessible to every developer.
+                        From zero to full observability in under 10 minutes.
                     </p>
                 </div>
+                <div className="landing-features-grid">
+                    <div className="landing-feature-card">
+                        <div className="landing-feature-icon">
+                            <span style={{ fontSize: '1.5rem', fontWeight: 700 }}>1</span>
+                        </div>
+                        <h3>Integrate Your App</h3>
+                        <p>Add the OpenTelemetry SDK to your application. We support Python, Node.js, Go, and more.</p>
+                    </div>
+                    <div className="landing-feature-card">
+                        <div className="landing-feature-icon">
+                            <span style={{ fontSize: '1.5rem', fontWeight: 700 }}>2</span>
+                        </div>
+                        <h3>Send Telemetry</h3>
+                        <p>Point your OTLP exporter to ObseraCloud. We'll handle ingestion, storage, and indexing.</p>
+                    </div>
+                    <div className="landing-feature-card">
+                        <div className="landing-feature-icon">
+                            <span style={{ fontSize: '1.5rem', fontWeight: 700 }}>3</span>
+                        </div>
+                        <h3>Get Insights</h3>
+                        <p>Explore your logs, metrics, and traces in real-time. Let our AI help you debug issues faster.</p>
+                    </div>
+                </div>
             </section>
+
+
 
             {/* Pricing Section */}
             <section className="landing-features" id="pricing">
@@ -188,7 +293,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
                         Start for free, scale as you grow. No hidden fees or surprise overages.
                     </p>
                 </div>
-                {/* Pricing Grid Placeholder */}
                 <div className="landing-features-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))' }}>
                     <div className="landing-feature-card" style={{ textAlign: 'center' }}>
                         <h3>Starter</h3>
@@ -212,7 +316,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
                         <Activity className="landing-footer-logo" />
                         <span>ObseraCloud</span>
                     </div>
-                    <p>&copy; 2024 ObseraCloud. Built for developers, by developers.</p>
+                    <p>&copy; 2026 ObseraCloud. Built by developers, for developers.</p>
                 </div>
             </footer>
         </div>

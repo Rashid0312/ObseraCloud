@@ -104,6 +104,15 @@ services:
     profiles:
       - production
 
+  certbot:
+    image: certbot/certbot
+    container_name: obsera-certbot
+    volumes:
+      - ./nginx/html:/var/www/certbot:rw
+      - ./nginx/ssl:/etc/letsencrypt:rw
+    profiles:
+      - production
+
 
 
   # ===========================================

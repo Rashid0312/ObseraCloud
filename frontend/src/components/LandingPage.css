@@ -501,6 +501,232 @@
     box-shadow: 0 0 15px hsl(from var(--primary) h s l / 0.4);
 }
 
+/* Animated Chart Bars */
+.chart-bar:nth-child(1) {
+    animation: barPulse 3s ease-in-out infinite 0s;
+}
+
+.chart-bar:nth-child(2) {
+    animation: barPulse 3s ease-in-out infinite 0.2s;
+}
+
+.chart-bar:nth-child(3) {
+    animation: barPulse 3s ease-in-out infinite 0.4s;
+}
+
+.chart-bar:nth-child(4) {
+    animation: barPulse 3s ease-in-out infinite 0.6s;
+}
+
+.chart-bar:nth-child(5) {
+    animation: barPulse 3s ease-in-out infinite 0.8s;
+}
+
+.chart-bar:nth-child(6) {
+    animation: barPulse 3s ease-in-out infinite 1.0s;
+}
+
+.chart-bar:nth-child(7) {
+    animation: barPulse 3s ease-in-out infinite 1.2s;
+}
+
+.chart-bar:nth-child(8) {
+    animation: barPulse 3s ease-in-out infinite 1.4s;
+}
+
+@keyframes barPulse {
+
+    0%,
+    100% {
+        transform: scaleY(1);
+    }
+
+    50% {
+        transform: scaleY(0.7);
+    }
+}
+
+/* Logo Marquee */
+.landing-marquee-section {
+    padding: 2rem 0;
+    overflow: hidden;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    background: var(--secondary);
+    position: relative;
+    z-index: 5;
+}
+
+.landing-marquee-label {
+    text-align: center;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--muted-foreground);
+    margin-bottom: 1.5rem;
+}
+
+.landing-marquee-track {
+    display: flex;
+    width: max-content;
+    animation: marquee 30s linear infinite;
+}
+
+.landing-marquee-track:hover {
+    animation-play-state: paused;
+}
+
+.landing-marquee-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0 2.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--muted-foreground);
+    white-space: nowrap;
+}
+
+.landing-marquee-item svg {
+    width: 24px;
+    height: 24px;
+}
+
+@keyframes marquee {
+    0% {
+        transform: translateX(0);
+    }
+
+    100% {
+        transform: translateX(-50%);
+    }
+}
+
+/* Testimonials */
+.landing-testimonials {
+    padding: 6rem 5%;
+    max-width: 1400px;
+    margin: 0 auto;
+    position: relative;
+    z-index: 5;
+}
+
+.landing-testimonials-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2rem;
+}
+
+.testimonial-card {
+    padding: 2rem;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.testimonial-card:hover {
+    border-color: hsl(from var(--primary) h s l / 0.3);
+    transform: translateY(-4px);
+}
+
+.testimonial-quote {
+    font-size: 1rem;
+    line-height: 1.7;
+    color: var(--foreground);
+    font-style: italic;
+}
+
+.testimonial-author {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.testimonial-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    color: var(--primary-foreground);
+}
+
+.testimonial-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.testimonial-name {
+    font-weight: 600;
+    color: var(--foreground);
+}
+
+.testimonial-role {
+    font-size: 0.85rem;
+    color: var(--muted-foreground);
+}
+
+/* Error Simulation State */
+.landing-dashboard-preview.error-state .landing-preview-status {
+    color: var(--error);
+}
+
+.landing-dashboard-preview.error-state .status-dot {
+    background: var(--error);
+    animation: none;
+}
+
+.landing-dashboard-preview.error-state .stat-value.success {
+    color: var(--error);
+}
+
+.simulate-error-btn {
+    position: absolute;
+    bottom: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 0.6rem 1.25rem;
+    background: var(--error);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    box-shadow: 0 4px 15px hsl(from var(--error) h s l / 0.4);
+    transition: all 0.2s ease;
+    z-index: 10;
+}
+
+.simulate-error-btn:hover {
+    transform: translateX(-50%) translateY(-2px);
+    box-shadow: 0 8px 25px hsl(from var(--error) h s l / 0.5);
+}
+
+.simulate-error-btn svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* Responsive Testimonials */
+@media (max-width: 1024px) {
+    .landing-testimonials-grid {
+        grid-template-columns: 1fr;
+        max-width: 500px;
+        margin: 0 auto;
+    }
+}
+
 /* Features Section */
 .landing-features {
     padding: 6rem 5%;
