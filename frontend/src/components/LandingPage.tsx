@@ -145,6 +145,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
                     <p className="landing-subtitle">
                         ObseraCloud is a multi-tenant observability platform that gives you complete visibility
                         into your applications with real-time logs, metrics, and distributed traces.
+                        <br />
+                        <span style={{ display: 'block', marginTop: '1rem', color: 'var(--primary)', fontWeight: 600, fontSize: '0.9rem' }}>
+                            Architected & Built by Abdirashiid Sammantar
+                        </span>
                     </p>
                     <div className="landing-cta-group">
                         <button className="landing-cta-primary" onClick={onGetStarted}>
@@ -346,7 +350,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
                         <Activity className="landing-footer-logo" />
                         <span>ObseraCloud</span>
                     </div>
-                    <p>&copy; 2026 ObseraCloud. Built by developers, for developers.</p>
+                    <p>&copy; 2026 ObseraCloud. Designed & Developed by Abdirashiid Sammantar.</p>
                 </div>
             </footer>
         </div>
