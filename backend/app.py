@@ -352,7 +352,7 @@ def login():
         try:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
                 cur.execute("""
-                    SELECT tenant_id, company_name, password_hash, api_key, is_active
+                    SELECT tenant_id, company_name, password_hash, api_key, is_active, is_admin
                     FROM tenants
                     WHERE tenant_id = %s
                 """, (tenant_id,))
