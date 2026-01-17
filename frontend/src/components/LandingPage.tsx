@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Activity, ArrowRight, Shield, BarChart3, Zap, Globe, Layers, Eye, Lock, AlertTriangle, CheckCircle, Menu, X } from 'lucide-react';
 import './LandingPage.css';
 
 interface LandingPageProps {
     onGetStarted: () => void;
 }
+
 
 // Animated Counter Hook
 const useCountUp = (end: number, duration: number = 2000, start: number = 0) => {
@@ -32,6 +34,7 @@ const useCountUp = (end: number, duration: number = 2000, start: number = 0) => 
 };
 
 const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
+    const navigate = useNavigate();
     const [isErrorMode, setIsErrorMode] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const heroRef = useRef<HTMLDivElement>(null);
@@ -155,7 +158,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
                             Get Started Free
                             <ArrowRight className="landing-btn-arrow" />
                         </button>
-                        <button className="landing-cta-secondary">
+                        <button className="landing-cta-secondary" onClick={() => navigate('/demo')}>
                             <Eye className="landing-btn-icon-left" />
                             Watch Demo
                         </button>

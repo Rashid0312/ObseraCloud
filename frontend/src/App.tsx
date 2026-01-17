@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-route
 import LandingPage from './components/LandingPage';
 import Dashboard from './components/Dashboard';
 import Login from './components/Login';
+import DemoPage from './components/DemoPage';
 import PublicStatusPage from './components/PublicStatusPage';
 import { ThemeProvider } from './contexts/ThemeContext';
 import './index.css';
@@ -158,6 +159,9 @@ function App() {
 
           {/* Public status pages */}
           <Route path="/status/:slug" element={<PublicStatusPage />} />
+
+          {/* Demo Page */}
+          <Route path="/demo" element={<DemoPage />} />
 
           {/* Catch-all redirect to landing */}
           <Route path="*" element={<Navigate to="/" replace />} />

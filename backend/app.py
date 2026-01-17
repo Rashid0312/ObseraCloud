@@ -375,6 +375,14 @@ def login():
                 # Generate JWT token
                 token = generate_jwt_token(tenant['tenant_id'], tenant['company_name'])
                 
+                # Check if user is admin
+                is_admin = tenant.get('is_admin', False)
+                if not is_admin:
+                    logger.warning(f"Login attempt by non-admin tenant: {tenant_id}")
+                    return jsonify({
+                        "error": "Platform is currently in private beta. Contact us for access."
+                    }), 403
+
                 # Update last_login timestamp
                 cur.execute("UPDATE tenants SET last_login = NOW() WHERE tenant_id = %s", (tenant_id,))
                 conn.commit()
