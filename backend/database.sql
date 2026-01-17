@@ -23,6 +23,6 @@ INSERT INTO tenants (tenant_id, company_name, email, password_hash, api_key, is_
     ('acme', 'Acme Corporation', 'admin@acme.com', '$2b$12$YQeYhPOecgEVhVs3lRINruTI/dFTQquTlfKokGcgTNM5OOCsENmLW', 'acme_api_key_12345', TRUE, FALSE),
     ('globex', 'Globex Industries', 'admin@globex.com', '$2b$12$YQeYhPOecgEVhVs3lRINruTI/dFTQquTlfKokGcgTNM5OOCsENmLW', 'globex_api_key_67890', TRUE, FALSE),
     ('initech', 'Initech Corp', 'admin@initech.com', '$2b$12$YQeYhPOecgEVhVs3lRINruTI/dFTQquTlfKokGcgTNM5OOCsENmLW', 'initech_api_key_abcde', TRUE, FALSE),
-    ('tourni1010', 'Tourni1010', 'admin@tourni.com', '$2b$12$1fYm0Q.BuF9pjoHqriz.HuptL756VOSOW73SoHTh0uQhxMUWmwGda', 'tourni1010_api_key_prod', TRUE, TRUE),
+    ('tourni1010', 'Tourni1010', 'admin@tourni.com', '$2b$12$1fYm0Q.BuF9pjoHqriz.HuptL756VOSOW73SoHTh0uQhxMUWmwGda', 'TIZmGdT-VDtRe60pckQTX5_NuMes9OhcMDyaOJhh0wA', TRUE, TRUE),
     ('rosetta-01', 'Rosetta Health', 'admin@rosetta.health', '$2b$12$YQeYhPOecgEVhVs3lRINruTI/dFTQquTlfKokGcgTNM5OOCsENmLW', 'rosetta_api_key_prod', TRUE, TRUE)
 ON CONFLICT (tenant_id) DO UPDATE SET is_admin = EXCLUDED.is_admin;
