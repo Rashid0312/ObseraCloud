@@ -45,14 +45,22 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, onGoHome }) => {
   const [highlightedTraceId, setHighlightedTraceId] = useState<string | null>(null);
   const [stats, setStats] = useState<Stats>({ totalLogs: 0, errorCount: 0, errorRate: 0, avgResponseTime: 0, activeTraces: 0 });
   const { theme, toggleTheme } = useTheme();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const isAdmin = tenantId === 'admin';
 
-  // Handler for navigating from logs to traces
+  // Handler for navigating from logs to traces to highlight specific trace
   const handleNavigateToTrace = (traceId: string) => {
     setHighlightedTraceId(traceId);
     setActiveView('traces');
   };
+
+  // Close sidebar on route change (mobile)
+  useEffect(() => {
+    if (window.innerWidth <= 768) {
+      setIsSidebarOpen(false);
+    }
+  }, [activeView]);
 
   useEffect(() => {
     const storedTenantId = localStorage.getItem('tenant_id');
@@ -139,19 +147,29 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, onGoHome }) => {
       <div className="dashboard-bg-orb dashboard-bg-orb-2" />
 
       {/* New Sidebar Component */}
-      <Sidebar
-        tenantName={tenantName}
-        activeView={activeView}
-        setActiveView={setActiveView}
-        onGoHome={onGoHome || (() => { })}
-        isAdmin={isAdmin}
-      />
+      <div className={`dashboard-sidebar-wrapper ${isSidebarOpen ? 'open' : ''}`}>
+        <Sidebar
+          tenantName={tenantName}
+          activeView={activeView}
+          setActiveView={setActiveView}
+          onGoHome={onGoHome || (() => { })}
+          isAdmin={isAdmin}
+          onClose={() => setIsSidebarOpen(false)}
+        />
+        <div className="sidebar-overlay" onClick={() => setIsSidebarOpen(false)} />
+      </div>
 
       {/* Main Content */}
       <main className="dashboard-main">
         {/* Header */}
         <header className="dashboard-header glass-panel">
           <div className="dashboard-header-left">
+            <button
+              className="dashboard-menu-btn"
+              onClick={() => setIsSidebarOpen(true)}
+            >
+              <List size={24} />
+            </button>
             <h1 className="dashboard-page-title">
               {activeView === 'overview' && 'Dashboard'}
               {activeView === 'logs' && 'Logs'}

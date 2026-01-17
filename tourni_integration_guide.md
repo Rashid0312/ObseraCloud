@@ -1,12 +1,12 @@
-# SkyView Integration Guide for Tourni1010
+# ObseraCloud Integration Guide for Tourni1010
 
-To ensure **all errors** and logs are captured in SkyView, please follow this configuration guide.
+To ensure **all errors** and logs are captured in ObseraCloud, please follow this configuration guide.
 
 ## 1. Required Configuration
 Ensure these environment variables are set in your application deployment:
 
 ```bash
-# Point to the SkyView Auth Gateway
+# Point to the ObseraCloud Auth Gateway
 export OTEL_EXPORTER_OTLP_ENDPOINT="http://46.62.229.59:4319"
 export OTEL_EXPORTER_OTLP_PROTOCOL="http/protobuf"
 

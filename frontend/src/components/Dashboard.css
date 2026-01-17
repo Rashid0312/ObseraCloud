@@ -1,4 +1,4 @@
-/* SkyView Dashboard - Deep Space Theme */
+/* ObseraCloud Dashboard - Deep Space Theme */
 .dashboard-container {
   display: flex;
   min-height: 100vh;
@@ -328,6 +328,70 @@
   line-height: 1.6;
 }
 
+/* Mobile Sidebar & Navigation */
+.dashboard-menu-btn {
+  display: none;
+  /* Hidden on desktop */
+  background: transparent;
+  border: none;
+  color: var(--foreground);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  margin-right: 12px;
+}
+
+.dashboard-menu-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.sidebar-close-btn {
+  display: none;
+  /* Hidden on desktop */
+  background: transparent;
+  border: none;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  margin-left: auto;
+}
+
+.sidebar-close-btn:hover {
+  color: var(--foreground);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.dashboard-sidebar-wrapper {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  z-index: 50;
+  display: flex;
+  /* Ensure Sidebar component is rendered */
+}
+
+/* Overlay for mobile sidebar */
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 40;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+/* Sidebar Header Branding Wrapper */
+.sidebar-header-branding {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+}
+
 @media (max-width: 1200px) {
   .dashboard-stats-grid {
     grid-template-columns: repeat(2, 1fr);
@@ -339,11 +403,54 @@
 }
 
 @media (max-width: 768px) {
-  .dashboard-main {
-    margin-left: 0;
+
+  /* Show Mobile Buttons */
+  .dashboard-menu-btn {
+    display: flex;
   }
 
+  .sidebar-close-btn {
+    display: flex;
+  }
+
+  /* Reset margin for Dashboard Main */
+  .dashboard-main {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  /* Hide Sidebar off-screen by default */
+  .dashboard-sidebar-wrapper .sidebar {
+    transform: translateX(-100%);
+    transition: transform 0.3s ease-in-out;
+  }
+
+  /* Open State */
+  .dashboard-sidebar-wrapper.open .sidebar {
+    transform: translateX(0);
+  }
+
+  .dashboard-sidebar-wrapper.open .sidebar-overlay {
+    display: block;
+    opacity: 1;
+  }
+
+  /* Adjust Grid Layouts */
   .dashboard-stats-grid {
     grid-template-columns: 1fr;
+    /* Stack cards */
+    gap: 16px;
+  }
+
+  .dashboard-header {
+    padding: 16px 20px;
+  }
+
+  .dashboard-page-title {
+    font-size: 1.25rem;
+  }
+
+  .dashboard-content {
+    padding: 20px;
   }
 }

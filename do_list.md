@@ -1,4 +1,4 @@
-# SkyView Future Features - To Do List
+# ObseraCloud Future Features - To Do List
 
 ## Priority 1 - User Acquisition Features
 *Implement when you have users on the server*
@@ -77,7 +77,7 @@
 
 ### Phase 2: Business Metrics support
 ### Planning Phase
-- [x] Explore SkyView architecture and understand ingestion patterns
+- [x] Explore ObseraCloud architecture and understand ingestion patterns
 - [x] Review auth gateway for API key validation flow
 - [x] Create implementation plan for TournamentV3 instrumentation
 - [x] Phase 2: Design dynamic business metrics visualization

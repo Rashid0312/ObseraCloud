@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import {
     LayoutGrid,
     List,
+    X,
     BarChart3,
     GitBranch,
     Settings,
@@ -21,6 +22,7 @@ interface SidebarProps {
     setActiveView: (view: string) => void;
     onGoHome: () => void;
     isAdmin: boolean;
+    onClose?: () => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -28,7 +30,8 @@ const Sidebar: React.FC<SidebarProps> = ({
     activeView,
     setActiveView,
     onGoHome,
-    isAdmin
+    isAdmin,
+    onClose
 }) => {
     const [expandedGroups, setExpandedGroups] = useState<string[]>(['telemetry', 'monitoring']);
 
@@ -44,11 +47,18 @@ const Sidebar: React.FC<SidebarProps> = ({
     return (
         <aside className="sidebar glass-panel">
             {/* Header */}
-            <div className="sidebar-header" onClick={onGoHome}>
-                <div className="sidebar-logo-icon">
-                    <Activity size={24} />
+            <div className="sidebar-header">
+                <div className="sidebar-header-branding" onClick={onGoHome}>
+                    <div className="sidebar-logo-icon">
+                        <Activity size={24} />
+                    </div>
+                    <span className="sidebar-logo-text">ObseraCloud</span>
                 </div>
-                <span className="sidebar-logo-text">SkyView</span>
+                {onClose && (
+                    <button className="sidebar-close-btn" onClick={onClose}>
+                        <X size={20} />
+                    </button>
+                )}
             </div>
 
             {/* Navigation */}

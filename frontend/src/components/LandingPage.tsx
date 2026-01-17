@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Activity, ArrowRight, Shield, BarChart3, Zap, Globe, Layers, Eye, Lock, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Activity, ArrowRight, Shield, BarChart3, Zap, Globe, Layers, Eye, Lock, AlertTriangle, CheckCircle, Menu, X } from 'lucide-react';
 import './LandingPage.css';
 
 interface LandingPageProps {
@@ -33,6 +33,7 @@ const useCountUp = (end: number, duration: number = 2000, start: number = 0) => 
 
 const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
     const [isErrorMode, setIsErrorMode] = useState(false);
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const heroRef = useRef<HTMLDivElement>(null);
 
     // Animated counters
@@ -94,11 +95,40 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
                     <a href="#how-it-works" className="landing-nav-link">How It Works</a>
                     <a href="#pricing" className="landing-nav-link">Pricing</a>
                 </nav>
-                <button className="landing-login-btn" onClick={onGetStarted}>
-                    Sign In
-                    <ArrowRight className="landing-btn-arrow" />
-                </button>
+                <div className="landing-header-actions">
+                    <button className="landing-login-btn desktop-only" onClick={onGetStarted}>
+                        Sign In
+                        <ArrowRight className="landing-btn-arrow" />
+                    </button>
+                    <button className="landing-mobile-menu-btn" onClick={() => setIsMobileMenuOpen(true)}>
+                        <Menu />
+                    </button>
+                </div>
             </header>
+
+            {/* Mobile Menu Overlay */}
+            <div className={`landing-mobile-menu ${isMobileMenuOpen ? 'open' : ''}`}>
+                <div className="landing-mobile-menu-header">
+                    <div className="landing-logo">
+                        <div className="landing-logo-container">
+                            <Activity className="landing-logo-icon" />
+                        </div>
+                        <span className="landing-logo-text">ObseraCloud</span>
+                    </div>
+                    <button className="landing-close-btn" onClick={() => setIsMobileMenuOpen(false)}>
+                        <X />
+                    </button>
+                </div>
+                <div className="landing-mobile-nav">
+                    <a href="#features" className="landing-mobile-link" onClick={() => setIsMobileMenuOpen(false)}>Features</a>
+                    <a href="#how-it-works" className="landing-mobile-link" onClick={() => setIsMobileMenuOpen(false)}>How It Works</a>
+                    <a href="#pricing" className="landing-mobile-link" onClick={() => setIsMobileMenuOpen(false)}>Pricing</a>
+                    <button className="landing-login-btn full-width" onClick={() => { onGetStarted(); setIsMobileMenuOpen(false); }}>
+                        Sign In
+                        <ArrowRight className="landing-btn-arrow" />
+                    </button>
+                </div>
+            </div>
 
             {/* Hero Section */}
             <section className="landing-hero" ref={heroRef}>

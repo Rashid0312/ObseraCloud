@@ -68,7 +68,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
         {/* Header */}
         <div className="auth-header">
           <Layers className="auth-logo-icon" />
-          <h1>SkyView</h1>
+          <h1>ObseraCloud</h1>
           <p>Multi-Tenant Observability Platform</p>
         </div>
 

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# SkyView Deployment Script
+# ObseraCloud Deployment Script
 # Usage: ./deploy.sh "Your commit message"
 
 set -e # Exit immediately if a command exits with a non-zero status
@@ -13,7 +13,7 @@ if [ -z "$1" ]; then
 fi
 
 echo "========================================"
-echo "🚀 Starting SkyView Deployment"
+echo "🚀 Starting ObseraCloud Deployment"
 echo "========================================"
 
 # 1. Local Git Operations
