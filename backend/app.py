@@ -420,6 +420,43 @@ def validate_tenant(tenant_id):
     finally:
         conn.close()
 
+@app.route('/api/admin/grant_access', methods=['POST'])
+def grant_access():
+    """Admin endpoint to grant login access to a tenant"""
+    auth_header = request.headers.get('Authorization')
+    if not auth_header:
+        return jsonify({"error": "Missing authorization header"}), 401
+    
+    # Validate Admin Token (Simplified for now - in prod use proper scope check)
+    try:
+        token = auth_header.split(" ")[1]
+        payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+        if payload['tenant_id'] != 'admin': # Strict check for 'admin' tenant
+             return jsonify({"error": "Unauthorized: Admin access required"}), 403
+    except Exception:
+        return jsonify({"error": "Invalid token"}), 401
+
+    data = request.json
+    target_tenant_id = data.get('tenant_id')
+    
+    if not target_tenant_id:
+        return jsonify({"error": "Missing tenant_id"}), 400
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("UPDATE tenants SET is_admin = TRUE WHERE tenant_id = %s", (target_tenant_id,))
+            if cur.rowcount == 0:
+                return jsonify({"error": "Tenant not found"}), 404
+            conn.commit()
+            logger.info(f"Access granted to tenant {target_tenant_id} by admin")
+            return jsonify({"message": f"Access granted to {target_tenant_id}"}), 200
+    except Exception as e:
+        logger.error(f"Error granting access: {e}")
+        return jsonify({"error": "Database error"}), 500
+    finally:
+        conn.close()
+
 def map_otel_severity_to_level(severity_number: int) -> str:
     """
     Map OpenTelemetry SeverityNumber to log level text.
