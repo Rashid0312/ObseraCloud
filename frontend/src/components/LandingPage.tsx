@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Activity, ArrowRight, Shield, BarChart3, Zap, Globe, Layers, Eye, Lock, AlertTriangle, CheckCircle, Menu, X } from 'lucide-react';
+import { EyeLogo } from './EyeLogo';
 import './LandingPage.css';
 
 interface LandingPageProps {
@@ -89,7 +90,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
             <header className="landing-header">
                 <div className="landing-logo">
                     <div className="landing-logo-container">
-                        <Activity className="landing-logo-icon" />
+                        <EyeLogo variant="light" className="landing-logo-icon" width={80} height={80} />
                     </div>
                     <span className="landing-logo-text">ObseraCloud</span>
                 </div>
@@ -114,7 +115,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
                 <div className="landing-mobile-menu-header">
                     <div className="landing-logo">
                         <div className="landing-logo-container">
-                            <Activity className="landing-logo-icon" />
+                            <EyeLogo variant="light" className="landing-logo-icon" width={80} height={80} />
                         </div>
                         <span className="landing-logo-text">ObseraCloud</span>
                     </div>
@@ -350,7 +351,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
             <footer className="landing-footer">
                 <div className="landing-footer-content">
                     <div className="landing-footer-brand">
-                        <Activity className="landing-footer-logo" />
+                        <EyeLogo variant="light" className="landing-logo-icon" width={32} height={32} />
                         <span>ObseraCloud</span>
                     </div>
                     <p>&copy; 2026 ObseraCloud. Designed & Developed by Abdirashiid Sammantar.</p>
