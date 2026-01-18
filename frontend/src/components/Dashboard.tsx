@@ -74,7 +74,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, onGoHome }) => {
   }, []);
 
   useEffect(() => {
-    if (!tenantId) return;
+    if (!tenantId || !token) return;
 
     const fetchStats = async () => {
       try {

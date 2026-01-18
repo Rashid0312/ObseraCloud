@@ -52,10 +52,10 @@ const LogsPanel: React.FC<LogsPanelProps> = ({ tenantId, refreshKey, compact, on
 
         // Include JWT token for authentication
         const token = localStorage.getItem('token');
+        if (!token) return;
+
         const headers: HeadersInit = {};
-        if (token) {
-          headers['Authorization'] = `Bearer ${token}`;
-        }
+        headers['Authorization'] = `Bearer ${token}`;
 
         const response = await fetch(url, { headers });
 

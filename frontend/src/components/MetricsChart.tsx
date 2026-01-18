@@ -82,10 +82,10 @@ const MetricsChart: React.FC<MetricsChartProps> = ({ tenantId, refreshKey }) => 
 
         // Include JWT token for authentication
         const token = localStorage.getItem('token');
+        if (!token) return;
+
         const headers: HeadersInit = {};
-        if (token) {
-          headers['Authorization'] = `Bearer ${token}`;
-        }
+        headers['Authorization'] = `Bearer ${token}`;
 
         const response = await fetch(url, { headers });
 

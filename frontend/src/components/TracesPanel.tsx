@@ -150,10 +150,10 @@ const TracesPanel: React.FC<TracesPanelProps> = ({ tenantId, refreshKey, highlig
 
         // Include JWT token for authentication
         const token = localStorage.getItem('token');
+        if (!token) return;
+
         const headers: HeadersInit = {};
-        if (token) {
-          headers['Authorization'] = `Bearer ${token}`;
-        }
+        headers['Authorization'] = `Bearer ${token}`;
 
         const response = await fetch(`${API_BASE_URL}/api/traces?tenant_id=${tenantId}&limit=100&hours=${hours}`, { headers });
         if (!response.ok) throw new Error('Failed to fetch traces');
