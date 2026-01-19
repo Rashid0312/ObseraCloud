@@ -36,7 +36,7 @@ export function EyeLogo({ variant = 'light', className, width = 120, height = 12
             {/* Eye outline - observation */}
             <path
                 d="M 60 35 Q 85 50 95 60 Q 85 70 60 85 Q 35 70 25 60 Q 35 50 60 35 Z"
-                stroke={isDark ? '#160e1b' : `url(#eyeGradient-${variant})`}
+                stroke={isDark ? '#160e1b' : '#f87f65'}
                 strokeWidth="2.5"
                 fill="none"
                 filter={isDark ? 'none' : `url(#eyeGlow-${variant})`}
@@ -45,9 +45,8 @@ export function EyeLogo({ variant = 'light', className, width = 120, height = 12
             {/* Cloud shape inside the iris - literally "cloud in eye" */}
             <g opacity={isDark ? '1' : '0.9'}>
                 {/* Main cloud body */}
-                <ellipse cx="52" cy="62" rx="8" ry="6" fill={isDark ? '#160e1b' : '#ea5a8c'} />
-                <ellipse cx="60" cy="59" rx="7" ry="7" fill={isDark ? '#160e1b' : '#f87f65'} />
-                <ellipse cx="68" cy="62" rx="8" ry="6" fill={isDark ? '#160e1b' : '#fca33e'} />
+
+
                 {/* Cloud base */}
                 <rect x="48" y="62" width="24" height="6" rx="2" fill={isDark ? '#160e1b' : '#f87f65'} />
             </g>
@@ -57,7 +56,7 @@ export function EyeLogo({ variant = 'light', className, width = 120, height = 12
                 cx="60"
                 cy="60"
                 r="20"
-                stroke={isDark ? '#160e1b' : `url(#eyeGradient-${variant})`}
+                stroke={isDark ? '#160e1b' : '#f87f65'}
                 strokeWidth="1.5"
                 fill="none"
                 opacity={isDark ? '0.6' : '0.4'}
@@ -71,7 +70,13 @@ export function EyeLogo({ variant = 'light', className, width = 120, height = 12
                 <line x1="72" y1="60" x2="75" y2="60" />
             </g>
 
-
+            {/* Corner brackets - viewfinder */}
+            <g opacity={isDark ? '0.5' : '0.4'} stroke={isDark ? '#160e1b' : '#ea5a8c'} strokeWidth="2" strokeLinecap="round">
+                <path d="M 20 45 L 20 40 L 25 40" />
+                <path d="M 100 45 L 100 40 L 95 40" />
+                <path d="M 20 75 L 20 80 L 25 80" />
+                <path d="M 100 75 L 100 80 L 95 80" />
+            </g>
         </svg>
     );
 }
