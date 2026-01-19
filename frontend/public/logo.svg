@@ -15,7 +15,7 @@
   
   <path
     d="M 60 35 Q 85 50 95 60 Q 85 70 60 85 Q 35 70 25 60 Q 35 50 60 35 Z"
-    stroke="#f87f65"
+    stroke="#fca33e"
     stroke-width="2.5"
     fill="none"
     filter="url(#eyeGlow-light)"
@@ -32,7 +32,7 @@
     cx="60"
     cy="60"
     r="20"
-    stroke="#f87f65"
+    stroke="#fca33e"
     stroke-width="1.5"
     fill="none"
     opacity="0.4"
