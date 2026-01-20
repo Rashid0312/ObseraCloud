@@ -45,8 +45,9 @@ export function EyeLogo({ variant = 'light', className, width = 120, height = 12
             {/* Cloud shape inside the iris - literally "cloud in eye" */}
             <g opacity={isDark ? '1' : '0.9'}>
                 {/* Main cloud body */}
-
-
+                <ellipse cx="52" cy="62" rx="8" ry="6" fill={isDark ? '#160e1b' : '#ea5a8c'} />
+                <ellipse cx="60" cy="59" rx="7" ry="7" fill={isDark ? '#160e1b' : '#f87f65'} />
+                <ellipse cx="68" cy="62" rx="8" ry="6" fill={isDark ? '#160e1b' : '#fca33e'} />
                 {/* Cloud base */}
                 <rect x="48" y="62" width="24" height="6" rx="2" fill={isDark ? '#160e1b' : '#f87f65'} />
             </g>
