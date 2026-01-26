@@ -72,11 +72,7 @@
 }
 
 .auth-logo-icon {
-  width: 32px;
-  height: 32px;
-  color: var(--primary);
   margin-bottom: 1rem;
-  filter: drop-shadow(0 0 12px hsl(from var(--primary) h s l / 0.5));
 }
 
 .auth-header h1 {

@@ -14,6 +14,7 @@ import {
     ChevronRight,
     Server
 } from 'lucide-react';
+import { EyeLogo } from './EyeLogo';
 import './Sidebar.css';
 
 interface SidebarProps {
@@ -50,7 +51,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             <div className="sidebar-header">
                 <div className="sidebar-header-branding" onClick={onGoHome}>
                     <div className="sidebar-logo-icon">
-                        <Activity size={24} />
+                        <EyeLogo variant="light" width={40} height={40} />
                     </div>
                     <span className="sidebar-logo-text">ObseraCloud</span>
                 </div>

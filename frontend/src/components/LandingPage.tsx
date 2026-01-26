@@ -97,7 +97,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
                 <nav className="landing-nav">
                     <a href="#features" className="landing-nav-link">Features</a>
                     <a href="#how-it-works" className="landing-nav-link">How It Works</a>
-                    <a href="#pricing" className="landing-nav-link">Pricing</a>
+
                 </nav>
                 <div className="landing-header-actions">
                     <button className="landing-login-btn desktop-only" onClick={onGetStarted}>
@@ -126,7 +126,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
                 <div className="landing-mobile-nav">
                     <a href="#features" className="landing-mobile-link" onClick={() => setIsMobileMenuOpen(false)}>Features</a>
                     <a href="#how-it-works" className="landing-mobile-link" onClick={() => setIsMobileMenuOpen(false)}>How It Works</a>
-                    <a href="#pricing" className="landing-mobile-link" onClick={() => setIsMobileMenuOpen(false)}>Pricing</a>
+
                     <button className="landing-login-btn full-width" onClick={() => { onGetStarted(); setIsMobileMenuOpen(false); }}>
                         Sign In
                         <ArrowRight className="landing-btn-arrow" />
@@ -322,30 +322,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
 
 
 
-            {/* Pricing Section */}
-            <section className="landing-features" id="pricing">
-                <div className="landing-features-header">
-                    <span className="landing-section-badge">Pricing</span>
-                    <h2 className="landing-features-title">Simple, Transparent Pricing</h2>
-                    <p className="landing-features-subtitle">
-                        Start for free, scale as you grow. No hidden fees or surprise overages.
-                    </p>
-                </div>
-                <div className="landing-features-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))' }}>
-                    <div className="landing-feature-card" style={{ textAlign: 'center' }}>
-                        <h3>Starter</h3>
-                        <div style={{ fontSize: '2.5rem', fontWeight: 'bold', margin: '1rem 0' }}>$0</div>
-                        <p>Perfect for side projects and hobbyists.</p>
-                        <button className="landing-cta-secondary" style={{ width: '100%', marginTop: '1rem', justifyContent: 'center' }}>Start Free</button>
-                    </div>
-                    <div className="landing-feature-card" style={{ textAlign: 'center', borderColor: 'var(--primary)' }}>
-                        <h3>Pro</h3>
-                        <div style={{ fontSize: '2.5rem', fontWeight: 'bold', margin: '1rem 0' }}>$49</div>
-                        <p>For growing teams and production apps.</p>
-                        <button className="landing-cta-primary" style={{ width: '100%', marginTop: '1rem', justifyContent: 'center' }}>Get Pro</button>
-                    </div>
-                </div>
-            </section>
+
 
             {/* Footer */}
             <footer className="landing-footer">

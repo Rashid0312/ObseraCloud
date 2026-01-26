@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { API_BASE_URL } from '../config';
-import { Layers } from 'lucide-react';
+import { EyeLogo } from './EyeLogo';
 import './Auth.css';
 
 interface LoginProps {
@@ -67,7 +67,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
       <div className="auth-card">
         {/* Header */}
         <div className="auth-header">
-          <Layers className="auth-logo-icon" />
+          <EyeLogo variant="light" width={80} height={80} className="auth-logo-icon" />
           <h1>ObseraCloud</h1>
           <p>Multi-Tenant Observability Platform</p>
         </div>
