@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { API_BASE_URL } from '../config';
-import { AlertCircle, Check, X, ChevronDown, ChevronRight, Clock, Server, Layers, Link, Copy, Info, Search, Filter, Sparkles, Brain } from 'lucide-react';
+import { AlertCircle, Check, X, ChevronDown, ChevronRight, Clock, Server, Layers, Link, Copy, Info, Search, Filter, Sparkles, Brain, Trash2 } from 'lucide-react';
 import './TracesPanel.css';
 import CorrelatedView from './CorrelatedView';
 import { DataDeletionPanel } from './DataDeletionPanel';
@@ -426,19 +426,21 @@ const TracesPanel: React.FC<TracesPanelProps> = ({ tenantId, refreshKey, highlig
             className="obs-delete-btn"
             onClick={() => setShowDeletion(true)}
             style={{
-              padding: '6px 12px',
+              padding: '4px 10px',
               background: '#f44336',
               border: 'none',
               borderRadius: '6px',
-              color: '#fff',
+              color: '#ffffff',
               cursor: 'pointer',
-              fontSize: '0.85rem',
+              fontSize: '0.75rem',
               marginLeft: '12px',
               display: 'flex',
               alignItems: 'center',
-              gap: '6px'
+              gap: '6px',
+              fontWeight: 700
             }}
           >
+            <Trash2 size={12} />
             Delete Data
           </button>
         </div>

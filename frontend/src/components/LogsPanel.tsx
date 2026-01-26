@@ -1,8 +1,10 @@
 import React, { useEffect, useState, type ChangeEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { API_BASE_URL } from '../config';
-import { Search, AlertCircle, ChevronDown, Clock, Bot } from 'lucide-react';
+import { Search, AlertCircle, ChevronDown, Clock, Bot, Trash2 } from 'lucide-react';
 import './LogsPanel.css';
 import LogDetailModal from './LogDetailModal';
+import { DataDeletionPanel } from './DataDeletionPanel';
 
 interface Log {
   timestamp: string;
@@ -38,6 +40,7 @@ const LogsPanel: React.FC<LogsPanelProps> = ({ tenantId, refreshKey, compact, on
   const [expandedLog, setExpandedLog] = useState<number | null>(null);
   const [timeRange, setTimeRange] = useState<string>('1'); // Default 1 hour
   const [selectedLog, setSelectedLog] = useState<Log | null>(null); // For AI debug modal
+  const [showDeletion, setShowDeletion] = useState(false);
 
   useEffect(() => {
     if (!tenantId) return;
@@ -140,6 +143,7 @@ const LogsPanel: React.FC<LogsPanelProps> = ({ tenantId, refreshKey, compact, on
                 <span className="obs-stat-value">{infoCount}</span>
                 <span className="obs-stat-label">Info</span>
               </div>
+
             </div>
 
             {/* Toolbar */}
@@ -179,6 +183,27 @@ const LogsPanel: React.FC<LogsPanelProps> = ({ tenantId, refreshKey, compact, on
                   <option value="WARN">WARN</option>
                   <option value="ERROR">ERROR</option>
                 </select>
+                <button
+                  className="obs-delete-btn"
+                  onClick={() => setShowDeletion(true)}
+                  style={{
+                    padding: '4px 10px',
+                    background: '#f44336',
+                    border: 'none',
+                    borderRadius: '6px',
+                    color: '#ffffff',
+                    cursor: 'pointer',
+                    fontSize: '0.75rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    fontWeight: 700,
+                    marginRight: '8px'
+                  }}
+                >
+                  <Trash2 size={12} />
+                  Delete Data
+                </button>
                 <span className="obs-logs-count">{filteredLogs.length} logs</span>
               </div>
             </div>
@@ -348,7 +373,7 @@ const LogsPanel: React.FC<LogsPanelProps> = ({ tenantId, refreshKey, compact, on
             ))
           )}
         </div>
-      </div>
+      </div >
 
       {/* AI Debug Modal */}
       {
@@ -358,7 +383,18 @@ const LogsPanel: React.FC<LogsPanelProps> = ({ tenantId, refreshKey, compact, on
             tenantId={tenantId}
             onClose={() => setSelectedLog(null)}
           />
-        )}
+        )
+      }
+      {/* Data Deletion Modal */}
+      {
+        showDeletion && createPortal(
+          <DataDeletionPanel
+            tenantId={tenantId}
+            onClose={() => setShowDeletion(false)}
+          />,
+          document.body
+        )
+      }
     </>
   );
 };

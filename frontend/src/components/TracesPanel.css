@@ -97,7 +97,8 @@
   padding: 6px 12px;
   background: rgba(244, 1, 1, 0.903) !important;
   border: 1px solid rgba(239, 68, 68, 0.3) !important;
-  color: var(--error) !important;
+  color: #ffffff !important;
+  font-weight: 700;
   transition: all 0.2s;
 }
 
@@ -169,7 +170,7 @@
 }
 
 .obs-filter-group label {
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   text-transform: uppercase;
   color: var(--muted-foreground);
   font-weight: 600;
@@ -183,7 +184,7 @@
   color: var(--foreground);
   outline: none;
   cursor: pointer;
-  min-width: 140px;
+  min-width: 180px;
 }
 
 /* Active Filters */
