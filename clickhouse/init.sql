@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS otel_logs (
 ) ENGINE = MergeTree()
 PARTITION BY toDate(Timestamp)
 ORDER BY (ServiceName, SeverityText, Timestamp)
-TTL toDateTime(Timestamp) + INTERVAL 30 DAY;
+TTL toDateTime(Timestamp) + INTERVAL 7 DAY;
 
 -- ==========================================
 -- TRACES
@@ -58,7 +58,7 @@ CREATE TABLE IF NOT EXISTS otel_traces (
 ) ENGINE = MergeTree()
 PARTITION BY toDate(Timestamp)
 ORDER BY (ServiceName, SpanName, Timestamp)
-TTL toDateTime(Timestamp) + INTERVAL 30 DAY;
+TTL toDateTime(Timestamp) + INTERVAL 7 DAY;
 
 -- Trace ID lookup table (Index)
 CREATE TABLE IF NOT EXISTS otel_traces_trace_id_ts (
@@ -108,7 +108,7 @@ CREATE TABLE IF NOT EXISTS otel_metrics_gauge (
 ) ENGINE = MergeTree()
 PARTITION BY toDate(Timestamp)
 ORDER BY (ServiceName, MetricName, Timestamp)
-TTL toDateTime(Timestamp) + INTERVAL 30 DAY;
+TTL toDateTime(Timestamp) + INTERVAL 7 DAY;
 
 CREATE TABLE IF NOT EXISTS otel_metrics_sum (
     Timestamp DateTime64(9) CODEC(Delta, ZSTD(1)),
@@ -140,7 +140,7 @@ CREATE TABLE IF NOT EXISTS otel_metrics_sum (
 ) ENGINE = MergeTree()
 PARTITION BY toDate(Timestamp)
 ORDER BY (ServiceName, MetricName, Timestamp)
-TTL toDateTime(Timestamp) + INTERVAL 30 DAY;
+TTL toDateTime(Timestamp) + INTERVAL 7 DAY;
 
 CREATE TABLE IF NOT EXISTS otel_metrics_histogram (
     Timestamp DateTime64(9) CODEC(Delta, ZSTD(1)),
@@ -176,4 +176,4 @@ CREATE TABLE IF NOT EXISTS otel_metrics_histogram (
 ) ENGINE = MergeTree()
 PARTITION BY toDate(Timestamp)
 ORDER BY (ServiceName, MetricName, Timestamp)
-TTL toDateTime(Timestamp) + INTERVAL 30 DAY;
+TTL toDateTime(Timestamp) + INTERVAL 7 DAY;

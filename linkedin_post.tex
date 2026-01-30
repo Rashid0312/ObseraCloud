@@ -1,0 +1,43 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{hyperref}
+\usepackage{enumitem}
+
+\title{ObseraCloud: A Distributed Observability Platform}
+\author{Abdirashiid Sammantar}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\noindent ObseraCloud is a \textbf{proof-of-concept (POC)} distributed observability platform designed to unify logs, metrics, and traces into a single correlated view. It demonstrates how high-performance ingestion and actionable visibility can be architected from scratch using modern open-source tools.
+
+\section*{Core Architecture \& Tech Stack}
+
+The system is built on a polyglot microservices architecture optimized for specific workload requirements:
+
+\begin{itemize}
+    \item \textbf{Ingestion Layer (Go):} Leveraging Go's concurrency model to handle high-throughput log and trace streams with minimal latency.
+    \item \textbf{Backend Logic (Python):} Utilizing Python for complex data processing and normalization tasks.
+    \item \textbf{Storage (ClickHouse \& PostgreSQL):} Adopting ClickHouse for columnar storage to enable sub-second queries on massive log datasets, backed by PostgreSQL for consistent relational data.
+    \item \textbf{Frontend (React \& TypeScript):} A responsive, real-time dashboard that streams data updates via WebSockets.
+\end{itemize}
+
+\section*{Key Features}
+
+\begin{itemize}
+    \item \textbf{Distributed Tracing:} Implements an OpenTelemetry-compatible gateway to correlate requests across microservices.
+    \item \textbf{Unified Data:} Eliminates data silos by linking logs directly to their corresponding traces.
+    \item \textbf{Scalability:} Designed to handle backpressure and data spikes inherent in cloud environments.
+\end{itemize}
+
+\noindent ObseraCloud demonstrates a practical approach to building scalable, enterprise-grade observability tools using open-source technologies.
+
+\vspace{1em}
+\noindent Repository and documentation: \href{[Insert GitHub Link]}{[Insert GitHub Link]}
+
+\vspace{1em}
+\noindent \#SoftwareEngineering \#SystemArchitecture \#Golang \#Python \#React \#OpenTelemetry \#DevOps \#ObseraCloud
+
+\end{document}

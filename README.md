@@ -1,44 +1,59 @@
 # ObseraCloud 🔭
 
-**Multi-Tenant Observability Platform**
+**Distributed Observability Platform for the Modern Cloud**
 
-A modern, cloud-native observability platform for logs, metrics, and traces with a premium UI.
+ObseraCloud is a full-stack, distributed observability platform engineered to unify logs, metrics, and traces into a single correlated interface. Built with a polyglot microservices architecture, it bridges the gap between high-performance data ingestion and actionable business intelligence.
 
 ![Premium Silver Theme](https://img.shields.io/badge/Theme-Premium%20Silver-silver)
+![Go](https://img.shields.io/badge/Ingestion-Go-00ADD8)
+![Python](https://img.shields.io/badge/Backend-Python-yellow)
+![ClickHouse](https://img.shields.io/badge/Storage-ClickHouse-FFCC00)
 ![React](https://img.shields.io/badge/Frontend-React%20%2B%20TypeScript-blue)
-![Flask](https://img.shields.io/badge/Backend-Flask%20%2B%20Python-green)
-![Docker](https://img.shields.io/badge/Deploy-Docker%20Compose-blue)
+
+> **🚧 Note: This project is a functional Proof of Concept (POC) designed to demonstrate distributed observability patterns. It is not intended for production use.**
 
 ---
 
-## ✨ Features
+## 🏗 System Architecture
 
-### 📊 Observability
-- **Logs** - Real-time log viewing with level filtering (INFO, WARN, ERROR)
-- **Metrics** - Interactive charts with Recharts visualization
-- **Traces** - Distributed trace tracking with timing breakdown
+ObseraCloud replaces siloed monitoring tools with a unified pipeline designed for scale.
 
-### 🔐 Security
-- **Rate Limiting** - 5/min login, 100/min API endpoints
-- **JWT Authentication** - 24-hour session tokens
-- **Security Headers** - XSS, clickjacking, MIME-sniffing protection
-- **Input Validation** - SQL injection & XSS prevention
-- **API Key Auth** - Ready for data ingestion endpoints
+### 1. High-Performance Ingestion (Go)
+*   **Role**: The front-line gatekeeper for all telemetry data.
+*   **Tech**: Built in **Go** for its superior concurrency model.
+*   **Function**: Buffers and batches high-throughput log and trace streams before they hit the storage layer, ensuring zero data loss during traffic spikes.
 
-### 🎨 UI/UX
-- **Premium Silver Theme** - Dark/light mode toggle
-- **Responsive Design** - Works on desktop and mobile
-- **Landing Page** - Beautiful marketing-style homepage
-- **Session Persistence** - Stay logged in across browser restarts
+### 2. Optimized Storage Engine (ClickHouse & PostgreSQL)
+*   **Logs & Metrics**: stored in **ClickHouse**. Its columnar nature allows for sub-second aggregations over millions of rows.
+*   **Relational Data**: Tenant metadata, user sessions, and configurations are managed by **PostgreSQL** for strict consistency.
+
+### 3. Intelligence Layer (Python)
+*   **Role**: The analytical brain.
+*   **Tech**: **Python** microservices.
+*   **Function**: Handles complex data normalization, health checking, and runs the AI-driven context engine to correlate failures across services.
+
+### 4. Real-Time Visualization (React & TypeScript)
+*   **Role**: The single pane of glass.
+*   **Tech**: **React**, **TypeScript**, **WebSockets**.
+*   **Function**: A responsive dashboard that visualizes distributed traces as Gantt charts and streams live logs with millisecond latency.
+
+---
+
+## ✨ Key Capabilities
+
+*   **Distributed Tracing Gateway**: An OpenTelemetry-compatible collector that tags every request, allowing you to trace a user click through to the database query.
+*   **Unified Data Model**: Logs are automatically linked to traces. (e.g., View a trace -> Click a span -> See the logs for that exact microsecond).
+*   **Multi-Tenancy**: Built from the ground up for shared infrastructure, with strict logical isolation at the database level.
+*   **Performance First**: Designed to handle ingestion backpressure without stalling the read path.
 
 ---
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Docker & Docker Compose
-- Node.js 18+ (for local development)
-- Python 3.9+ (for local development)
+*   Docker & Docker Compose
+*   Node.js 18+ (local dev)
+*   Go 1.20+ (local dev)
 
 ### Run with Docker
 
@@ -47,39 +62,17 @@ A modern, cloud-native observability platform for logs, metrics, and traces with
 git clone https://github.com/yourusername/ObseraCloud.git
 cd ObseraCloud
 
-# Start all services
+# Start the full stack (Ingestion, Storage, UI)
 docker-compose up -d
 
-# Access the app
+# Access the dashboard
 open http://localhost:3001
 ```
 
 ### Demo Credentials
-| Tenant ID | Password |
-|-----------|----------|
-| `acme` | `demo123` |
-| `globex` | `demo123` |
-| `initech` | `demo123` |
-
----
-
-## 🏗️ Architecture
-
-```
-┌─────────────────┐     ┌─────────────────┐
-│   Frontend      │────▶│   Backend       │
-│   (React)       │     │   (Flask)       │
-│   Port: 3001    │     │   Port: 5001    │
-└─────────────────┘     └────────┬────────┘
-                                 │
-         ┌───────────────────────┼───────────────────────┐
-         ▼                       ▼                       ▼
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│   Loki          │     │   Postgres      │     │   Tempo         │
-│   (Logs/Metrics)│     │   (Tenants)     │     │   (Traces)      │
-│   Port: 3100    │     │   Port: 5432    │     │   Port: 3200    │
-└─────────────────┘     └─────────────────┘     └─────────────────┘
-```
+| Tenant ID | Role | Password |
+|-----------|------|----------|
+| `acme`    | Admin| `demo123`|
 
 ---
 
@@ -87,130 +80,34 @@ open http://localhost:3001
 
 ```
 ObseraCloud/
-├── frontend/                 # React + TypeScript UI
-│   ├── src/
-│   │   ├── components/       # UI components
-│   │   ├── contexts/         # React contexts (Theme)
-│   │   └── index.css         # Global styles
-│   └── Dockerfile
-├── backend/                  # Flask API
-│   ├── app.py               # Main application
-│   └── Dockerfile
-├── loki/                     # Loki configuration
-├── continuous_generator.py   # Demo data generator
-└── docker-compose.yml        # Container orchestration
+├── otel-collector/        # Go-based Ingestion Gateway
+├── backend/               # Python (Flask) Analytical Engine
+├── frontend/              # (React + TypeScript) Dashboard
+├── clickhouse/            # Columnar Storage Config
+├── loki/                  # Log Aggregation Config
+└── docker-compose.yml     # Orchestration
 ```
 
 ---
 
-## 🔧 API Endpoints
+## � Security
 
-### Authentication
-| Method | Endpoint | Description | Rate Limit |
-|--------|----------|-------------|------------|
-| POST | `/api/auth/login` | Authenticate tenant | 5/min |
-| POST | `/api/auth/register` | Register new tenant | 5/min |
-
-### Data Queries
-| Method | Endpoint | Description | Rate Limit |
-|--------|----------|-------------|------------|
-| GET | `/api/logs` | Query logs | 100/min |
-| GET | `/api/metrics` | Query metrics | 100/min |
-| GET | `/api/traces` | Query traces | 100/min |
-
-### Health
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/health` | Service health check |
-
----
-
-## 🔐 Security Features
-
-### Response Headers
-```
-X-Content-Type-Options: nosniff
-X-Frame-Options: DENY
-X-XSS-Protection: 1; mode=block
-Cache-Control: no-store, no-cache, must-revalidate
-```
-
-### JWT Token (returned on login)
-```json
-{
-  "tenant_id": "acme",
-  "token": "eyJhbG...",
-  "expires_in": 86400,
-  "api_key": "sk_..."
-}
-```
-
----
-
-## 🧪 Testing Security
-
-```bash
-# Test rate limiting (6th request should fail)
-for i in {1..6}; do curl -s -X POST http://localhost:5001/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"tenant_id": "acme", "password": "demo123"}' | head -1; done
-
-# Test security headers
-curl -I http://localhost:5001/health
-
-# Test input validation (should reject)
-curl -s "http://localhost:5001/api/logs?tenant_id=<script>alert(1)</script>"
-```
-
----
-
-## 📈 Demo Data Generator
-
-Generate continuous demo data:
-
-```bash
-python3 continuous_generator.py
-```
-
-Generates:
-- 📊 Logs (3 per cycle)
-- 📈 Metrics (1 per cycle)
-- 🔗 Traces (1 per 2 cycles)
-
----
-
-## 🛠️ Development
-
-### Frontend
-```bash
-cd frontend
-npm install
-npm run dev     # Development server
-npm run build   # Production build
-```
-
-### Backend
-```bash
-cd backend
-pip install -r requirements.txt
-python app.py   # Development server
-```
-
----
-
-## 📝 License
-
-MIT License - See [LICENSE](LICENSE) for details.
+*   **JWT Authentication**: Stateless, secure session management.
+*   **Role-Based Access Control (RBAC)**: Granular permissions per tenant.
+*   **Security Headers**: Automated protections against XSS and injection attacks.
 
 ---
 
 ## 🤝 Contributing
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a pull request
+This is an open engineering effort. We welcome contributions in Go (Ingestion), Python (Backend), or React (Frontend).
+
+1.  Fork the repository
+2.  Create a feature branch (`git checkout -b feature/amazing-feature`)
+3.  Commit your changes
+4.  Push to the branch
+5.  Open a Pull Request
 
 ---
 
-**Built with ❤️ using React, Flask, and Loki**
+**Built with engineering pride using OpenTelemetry, ClickHouse, and Go.**

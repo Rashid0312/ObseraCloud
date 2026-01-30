@@ -54,3 +54,4 @@ observability-mvp/grafana-data/
 .env
 .env.local
 .env.*.local
+.aider*
